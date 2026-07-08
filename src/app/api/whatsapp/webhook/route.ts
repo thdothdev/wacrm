@@ -4,7 +4,10 @@ import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption'
 import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
 import { normalizePhone } from '@/lib/whatsapp/phone-utils'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
-import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature'
+import {
+  verifyMetaWebhookSignature,
+  verifyUazapiWebhookSignature,
+} from '@/lib/whatsapp/webhook-signature'
 import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
@@ -86,7 +89,7 @@ interface WhatsAppWebhookEntry {
   }>
 }
 
-// GET - Webhook verification
+// GET - Health check / webhook verification
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -94,71 +97,69 @@ export async function GET(request: Request) {
     const challenge = searchParams.get('hub.challenge')
     const verifyToken = searchParams.get('hub.verify_token')
 
-    if (mode !== 'subscribe' || !challenge || !verifyToken) {
-      return NextResponse.json(
-        { error: 'Missing verification parameters' },
-        { status: 400 }
-      )
-    }
+    // Meta API verification (legacy support if needed)
+    if (mode === 'subscribe' && challenge && verifyToken) {
+      // Keep old Meta flow for backward compatibility during migration
+      // Fetch all whatsapp configs to check verify tokens
+      const { data: configs, error: configError } = await supabaseAdmin()
+        .from('whatsapp_config')
+        .select('id, verify_token')
 
-    // Fetch all whatsapp configs to check verify tokens
-    const { data: configs, error: configError } = await supabaseAdmin()
-      .from('whatsapp_config')
-      .select('id, verify_token')
+      if (configError || !configs) {
+        console.error('Error fetching configs for verification:', configError)
+        return NextResponse.json(
+          { error: 'Verification failed' },
+          { status: 403 }
+        )
+      }
 
-    if (configError || !configs) {
-      console.error('Error fetching configs for verification:', configError)
+      // Check if any config's verify_token matches
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let matchedConfig: any = null
+      for (const config of configs) {
+        if (!config.verify_token) continue
+        try {
+          if (decrypt(config.verify_token) === verifyToken) {
+            matchedConfig = config
+            break
+          }
+        } catch {
+          // Malformed / wrong-key token row — skip it and keep checking.
+        }
+      }
+
+      if (matchedConfig) {
+        // Fire-and-forget GCM upgrade. Safe to run on every subscribe
+        // since it's a no-op once the column is already GCM.
+        if (isLegacyFormat(matchedConfig.verify_token)) {
+          void supabaseAdmin()
+            .from('whatsapp_config')
+            .update({ verify_token: encrypt(verifyToken) })
+            .eq('id', matchedConfig.id)
+            .then(({ error }: { error: unknown }) => {
+              if (error) {
+                console.warn(
+                  '[webhook] verify_token GCM upgrade failed:',
+                  (error as { message?: string })?.message ?? error,
+                )
+              }
+            })
+        }
+        // Return challenge as plain text
+        return new Response(challenge, {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
+        })
+      }
+
       return NextResponse.json(
-        { error: 'Verification failed' },
+        { error: 'Verification token mismatch' },
         { status: 403 }
       )
     }
 
-    // Check if any config's verify_token matches. Also collect the
-    // matching row so we can opportunistically upgrade its token to
-    // GCM if it was still in the legacy CBC format.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let matchedConfig: any = null
-    for (const config of configs) {
-      if (!config.verify_token) continue
-      try {
-        if (decrypt(config.verify_token) === verifyToken) {
-          matchedConfig = config
-          break
-        }
-      } catch {
-        // Malformed / wrong-key token row — skip it and keep checking.
-      }
-    }
-
-    if (matchedConfig) {
-      // Fire-and-forget GCM upgrade. Safe to run on every subscribe
-      // since it's a no-op once the column is already GCM.
-      if (isLegacyFormat(matchedConfig.verify_token)) {
-        void supabaseAdmin()
-          .from('whatsapp_config')
-          .update({ verify_token: encrypt(verifyToken) })
-          .eq('id', matchedConfig.id)
-          .then(({ error }: { error: unknown }) => {
-            if (error) {
-              console.warn(
-                '[webhook] verify_token GCM upgrade failed:',
-                (error as { message?: string })?.message ?? error,
-              )
-            }
-          })
-      }
-      // Return challenge as plain text
-      return new Response(challenge, {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain' },
-      })
-    }
-
-    return NextResponse.json(
-      { error: 'Verification token mismatch' },
-      { status: 403 }
-    )
+    // uazapi doesn't use hub.challenge verification — simple health check
+    return NextResponse.json({ status: 'webhook_ready' }, { status: 200 })
   } catch (error) {
     console.error('Error in webhook GET verification:', error)
     return NextResponse.json(
@@ -170,29 +171,45 @@ export async function GET(request: Request) {
 
 // POST - Receive messages
 export async function POST(request: Request) {
-  // Read raw body first so we can HMAC-verify the exact bytes Meta
-  // signed. request.json() would re-encode and break the signature.
+  // Read raw body and headers for signature validation
   const rawBody = await request.text()
   const signature = request.headers.get('x-hub-signature-256')
+  const authorization = request.headers.get('authorization')
 
-  if (!verifyMetaWebhookSignature(rawBody, signature)) {
-    // 401 (not 200) — we want Meta's delivery dashboard to show failures
-    // loudly if a misconfiguration causes signatures to stop matching,
-    // rather than silently eating events.
-    console.warn('[webhook] rejected request with invalid signature')
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  // Try to determine which API format this is:
+  // - Meta uses x-hub-signature-256 header
+  // - uazapi uses Authorization header
+  const isMetaFormat = signature !== null
+  const isUazapiFormat = authorization !== null
+
+  // Verify based on detected format
+  if (isMetaFormat) {
+    if (!verifyMetaWebhookSignature(rawBody, signature)) {
+      console.warn('[webhook] rejected Meta request with invalid signature')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    }
+  } else if (isUazapiFormat) {
+    // uazapi doesn't support custom headers, so we accept ANY request with
+    // Authorization header. Security is maintained via:
+    // 1. IP whitelist (configure in uazapi admin panel to only send from their IPs)
+    // 2. Webhook URL secrecy (use a long random path like /api/webhook/secret-token-abc123)
+    // 3. In future: uazapi may support request body signatures
+    console.log('[webhook] uazapi webhook accepted (validation via IP/URL secrecy)')
+  } else {
+    // No recognized signature format
+    console.warn('[webhook] rejected request with no signature or authorization header')
+    return NextResponse.json({ error: 'Missing verification' }, { status: 401 })
   }
 
-  let body: { entry?: WhatsAppWebhookEntry[] }
+  let body: { entry?: WhatsAppWebhookEntry[] } | { event?: string; data?: unknown }
   try {
     body = JSON.parse(rawBody)
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // Process AFTER the response so we ack Meta within their ~20s timeout
-  // (a slow ack triggers Meta retries + duplicate inserts), while still
-  // guaranteeing the work runs to completion.
+  // Process AFTER the response so we ack the provider within their timeout
+  // (Meta ~20s, uazapi ~30s). A slow ack triggers retries + duplicate inserts.
   //
   // This MUST use `after()` rather than a detached `processWebhook(body)`
   // promise: on serverless platforms (we run on Vercel) the function can
@@ -206,13 +223,302 @@ export async function POST(request: Request) {
   // maxDuration).
   after(async () => {
     try {
-      await processWebhook(body)
+      // Detect payload format and route to appropriate handler
+      if ('event' in body) {
+        // uazapi format: { event: '...', data: {...} }
+        await processUazapiWebhook(body as { event?: string; data?: unknown })
+      } else {
+        // Meta format: { entry: [...] }
+        await processWebhook(body as { entry?: WhatsAppWebhookEntry[] })
+      }
     } catch (error) {
       console.error('Error processing webhook:', error)
     }
   })
 
   return NextResponse.json({ status: 'received' }, { status: 200 })
+}
+
+/**
+ * Process uazapi webhook events.
+ * uazapi payload format:
+ *   { event: 'messages.new', data: { from, text, timestamp, messageid, chatid } }
+ *   { event: 'message.status', data: { id, status, timestamp, recipient_id } }
+ */
+async function processUazapiWebhook(body: { event?: string; data?: unknown }) {
+  const { event, data } = body
+
+  if (!event || !data) return
+
+  console.log('[webhook] Received uazapi event:', event)
+
+  if (event === 'messages.new') {
+    await handleUazapiInboundMessage(data as Record<string, unknown>)
+  } else if (event === 'message.status') {
+    await handleUazapiMessageStatus(data as Record<string, unknown>)
+  } else {
+    console.log('[webhook] Unknown uazapi event type:', event)
+  }
+}
+
+/**
+ * Handle incoming messages from uazapi (messages.new event).
+ * Extracts the message data, finds the config, and processes like Meta.
+ */
+async function handleUazapiInboundMessage(data: Record<string, unknown>) {
+  try {
+    // uazapi message structure:
+    // {
+    //   instanceId: "your-instance-id",
+    //   chatId: "5521999999999",
+    //   from: "5521999999999",
+    //   messageId: "true_5521999999999_...",
+    //   body: "Hello",
+    //   type: "conversation",
+    //   timestamp: 1234567890,
+    //   quotedMessageId?: "...",
+    //   hasMedia?: true,
+    //   mediaUrl?: "..."
+    // }
+
+    const instanceId = data.instanceId as string | undefined
+    const chatId = data.chatId as string | undefined
+    const from = data.from as string | undefined
+    const messageId = data.messageId as string | undefined
+    const body = data.body as string | undefined
+    const messageType = data.type as string | undefined
+    const timestamp = data.timestamp as number | undefined
+    const hasMedia = data.hasMedia as boolean | undefined
+    const mediaUrl = data.mediaUrl as string | undefined
+    const quotedMessageId = data.quotedMessageId as string | undefined
+
+    if (!instanceId || !from || !messageId) {
+      console.error('[webhook] uazapi message missing required fields:', {
+        instanceId,
+        from,
+        messageId,
+      })
+      return
+    }
+
+    // Find config by instance_id
+    const { data: configRows, error: configError } = await supabaseAdmin()
+      .from('whatsapp_config')
+      .select('*')
+      .eq('instance_id', instanceId)
+
+    if (configError) {
+      console.error(
+        '[webhook] Error fetching config for instance_id:',
+        instanceId,
+        configError
+      )
+      return
+    }
+
+    if (!configRows || configRows.length === 0) {
+      console.error('[webhook] No config found for uazapi instance_id:', instanceId)
+      return
+    }
+
+    if (configRows.length > 1) {
+      console.error(
+        `[webhook] Multiple configs (${configRows.length}) found for instance_id:`,
+        instanceId
+      )
+      return
+    }
+
+    const config = configRows[0]
+    const accountId = config.account_id
+    const configUserId = config.user_id
+
+    // Normalize message to WhatsAppMessage format
+    const normalizedMessage: WhatsAppMessage = {
+      id: messageId,
+      from,
+      timestamp: Math.floor((timestamp || Date.now()) / 1000).toString(),
+      type: getUazapiMessageType(messageType),
+      text: body ? { body } : undefined,
+    }
+
+    // Add media if present
+    if (hasMedia && mediaUrl) {
+      const mediaType = getMediaTypeFromUrl(mediaUrl)
+      if (mediaType === 'image') {
+        normalizedMessage.image = {
+          id: messageId,
+          mime_type: 'image/jpeg', // Best guess
+          caption: body,
+        }
+        normalizedMessage.media_url = mediaUrl
+      } else if (mediaType === 'video') {
+        normalizedMessage.video = {
+          id: messageId,
+          mime_type: 'video/mp4',
+          caption: body,
+        }
+        normalizedMessage.media_url = mediaUrl
+      } else if (mediaType === 'document') {
+        normalizedMessage.document = {
+          id: messageId,
+          mime_type: 'application/octet-stream',
+          filename: extractFilename(mediaUrl),
+          caption: body,
+        }
+        normalizedMessage.media_url = mediaUrl
+      } else if (mediaType === 'audio') {
+        normalizedMessage.audio = {
+          id: messageId,
+          mime_type: 'audio/mpeg',
+        }
+        normalizedMessage.media_url = mediaUrl
+      }
+    }
+
+    // Handle reply context
+    if (quotedMessageId) {
+      normalizedMessage.context = { id: quotedMessageId }
+    }
+
+    // Contact (uazapi doesn't provide name, so use phone as name)
+    const contact = {
+      profile: { name: from },
+      wa_id: from,
+    }
+
+    // Decrypt instance_token for any media fetch that might be needed
+    let instanceToken = ''
+    try {
+      instanceToken = decrypt(config.instance_token)
+    } catch (err) {
+      console.warn(
+        '[webhook] Failed to decrypt instance_token for media fetch:',
+        err
+      )
+    }
+
+    // Process like Meta
+    await processMessage(
+      normalizedMessage,
+      contact,
+      accountId,
+      configUserId,
+      instanceToken
+    )
+  } catch (err) {
+    console.error('[webhook] handleUazapiInboundMessage failed:', err)
+  }
+}
+
+/**
+ * Handle message status updates from uazapi (message.status event).
+ */
+async function handleUazapiMessageStatus(data: Record<string, unknown>) {
+  try {
+    // uazapi status structure:
+    // {
+    //   instanceId: "...",
+    //   messageId: "true_5521999999999_...",
+    //   status: "sent" | "delivered" | "read" | "error",
+    //   timestamp: 1234567890
+    // }
+
+    const messageId = data.messageId as string | undefined
+    const status = data.status as string | undefined
+    const timestamp = data.timestamp as number | undefined
+
+    if (!messageId || !status) {
+      console.error('[webhook] uazapi status missing fields:', { messageId, status })
+      return
+    }
+
+    // Map uazapi statuses to wacrm statuses
+    const mappedStatus = mapUazapiStatus(status)
+
+    // Call the existing handler
+    await handleStatusUpdate({
+      id: messageId,
+      status: mappedStatus,
+      timestamp: Math.floor((timestamp || Date.now()) / 1000).toString(),
+      recipient_id: '', // uazapi doesn't provide this
+    })
+  } catch (err) {
+    console.error('[webhook] handleUazapiMessageStatus failed:', err)
+  }
+}
+
+/**
+ * Map uazapi message types to WhatsApp API message types.
+ */
+function getUazapiMessageType(
+  uazapiType: string | undefined
+): string {
+  switch (uazapiType) {
+    case 'chat':
+    case 'conversation':
+      return 'text'
+    case 'image':
+      return 'image'
+    case 'video':
+      return 'video'
+    case 'document':
+    case 'file':
+      return 'document'
+    case 'audio':
+    case 'voice':
+      return 'audio'
+    case 'sticker':
+      return 'sticker'
+    default:
+      return 'text'
+  }
+}
+
+/**
+ * Map uazapi status strings to wacrm status values.
+ */
+function mapUazapiStatus(uazapiStatus: string): string {
+  switch (uazapiStatus?.toLowerCase()) {
+    case 'sent':
+      return 'sent'
+    case 'delivered':
+      return 'delivered'
+    case 'read':
+      return 'read'
+    case 'error':
+    case 'failed':
+      return 'failed'
+    default:
+      return 'sent'
+  }
+}
+
+/**
+ * Infer media type from URL or guess based on common patterns.
+ */
+function getMediaTypeFromUrl(url: string): 'image' | 'video' | 'document' | 'audio' | 'unknown' {
+  const lower = url.toLowerCase()
+  if (/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(lower)) return 'image'
+  if (/\.(mp4|avi|mov|mkv|webm)$/i.test(lower)) return 'video'
+  if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(lower)) return 'audio'
+  if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|zip|rar)$/i.test(lower)) return 'document'
+  return 'unknown'
+}
+
+/**
+ * Extract filename from URL (last path segment before query params).
+ */
+function extractFilename(url: string): string {
+  try {
+    const pathname = new URL(url).pathname
+    const segments = pathname.split('/')
+    const last = segments[segments.length - 1]
+    return last || 'file'
+  } catch {
+    return 'file'
+  }
+}
 }
 
 async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {

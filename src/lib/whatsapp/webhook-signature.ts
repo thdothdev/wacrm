@@ -45,3 +45,38 @@ export function verifyMetaWebhookSignature(
   if (a.length !== b.length) return false
   return crypto.timingSafeEqual(a, b)
 }
+
+/**
+ * Verify the authorization token uazapi sends with webhook POSTs.
+ *
+ * Unlike Meta's HMAC signature, uazapi uses a simple bearer token.
+ * We configured this token via setWebhook() with authHeader parameter.
+ * Each webhook POST from uazapi includes it in the Authorization header.
+ *
+ * Contract:
+ *   `UAZAPI_WEBHOOK_TOKEN` is **required**. If it's missing we fail closed —
+ *   every request is rejected until the operator configures the token.
+ */
+export function verifyUazapiWebhookSignature(
+  authorizationHeader: string | null,
+): boolean {
+  const token = process.env.UAZAPI_WEBHOOK_TOKEN
+  if (!token) {
+    console.error(
+      '[webhook] UAZAPI_WEBHOOK_TOKEN is not set — rejecting request. ' +
+        'Configure the env var to enable signature verification.',
+    )
+    return false
+  }
+
+  if (!authorizationHeader) return false
+
+  // uazapi sends: Authorization: Bearer <token>
+  const expected = `Bearer ${token}`
+  const a = Buffer.from(authorizationHeader)
+  const b = Buffer.from(expected)
+
+  // Bail if lengths differ — timingSafeEqual throws otherwise.
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
+}

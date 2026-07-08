@@ -6,6 +6,7 @@ import {
   subscribeWabaToApp,
   verifyPhoneNumber,
 } from '@/lib/whatsapp/meta-api'
+import { connectInstance, getInstanceStatus } from '@/lib/whatsapp/uazapi-client'
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
 
 /**
@@ -87,7 +88,7 @@ export async function GET() {
 
     const { data: config, error: configError } = await supabase
       .from('whatsapp_config')
-      .select('phone_number_id, access_token, status')
+      .select('phone_number_id, access_token, instance_token, connection_state, status')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -110,43 +111,75 @@ export async function GET() {
       )
     }
 
-    // Try to decrypt the stored token with the current ENCRYPTION_KEY.
-    // If this fails, the key changed (or was never consistent across envs).
-    let accessToken: string
-    try {
-      accessToken = decrypt(config.access_token)
-    } catch (err) {
-      console.error('[whatsapp/config GET] Token decryption failed:', err)
-      return NextResponse.json(
-        {
-          connected: false,
-          reason: 'token_corrupted',
-          needs_reset: true,
-          message:
-            'The stored access token cannot be decrypted with the current ENCRYPTION_KEY. This usually means the key changed, or it differs between environments (local vs Hostinger vs Vercel). Click "Reset Configuration" below, then re-save.',
-        },
-        { status: 200 }
-      )
+    // Detect which API type is in use (Meta or uazapi)
+    if (config.instance_token) {
+      // uazapi mode
+      try {
+        const decryptedInstanceToken = decrypt(config.instance_token)
+        const status = await getInstanceStatus({ instanceToken: decryptedInstanceToken })
+        return NextResponse.json({
+          connected: status.connected,
+          api_type: 'uazapi',
+          instance_state: status.state,
+          phone: status.phone,
+          last_activity: status.lastActivity,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown uazapi error'
+        console.error('[whatsapp/config GET] uazapi status check failed:', message)
+        return NextResponse.json(
+          {
+            connected: false,
+            reason: 'uazapi_error',
+            api_type: 'uazapi',
+            message: `uazapi error: ${message}`,
+          },
+          { status: 200 }
+        )
+      }
     }
 
-    // Validate credentials against Meta
-    try {
-      const phoneInfo = await verifyPhoneNumber({
-        phoneNumberId: config.phone_number_id,
-        accessToken,
-      })
-      return NextResponse.json({ connected: true, phone_info: phoneInfo })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown Meta API error'
-      console.error('[whatsapp/config GET] Meta API verification failed:', message)
-      return NextResponse.json(
-        {
-          connected: false,
-          reason: 'meta_api_error',
-          message: `Meta API rejected the credentials: ${message}`,
-        },
-        { status: 200 }
-      )
+    // Meta mode
+    if (config.access_token) {
+      // Try to decrypt the stored token with the current ENCRYPTION_KEY.
+      // If this fails, the key changed (or was never consistent across envs).
+      let accessToken: string
+      try {
+        accessToken = decrypt(config.access_token)
+      } catch (err) {
+        console.error('[whatsapp/config GET] Token decryption failed:', err)
+        return NextResponse.json(
+          {
+            connected: false,
+            reason: 'token_corrupted',
+            needs_reset: true,
+            message:
+              'The stored access token cannot be decrypted with the current ENCRYPTION_KEY. This usually means the key changed, or it differs between environments (local vs Hostinger vs Vercel). Click "Reset Configuration" below, then re-save.',
+          },
+          { status: 200 }
+        )
+      }
+
+      // Validate credentials against Meta
+      try {
+        const phoneInfo = await verifyPhoneNumber({
+          phoneNumberId: config.phone_number_id,
+          accessToken,
+        })
+        return NextResponse.json({ connected: true, api_type: 'meta', phone_info: phoneInfo })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown Meta API error'
+        console.error('[whatsapp/config GET] Meta API verification failed:', message)
+        return NextResponse.json(
+          {
+            connected: false,
+            reason: 'meta_api_error',
+            api_type: 'meta',
+            message: `Meta API rejected the credentials: ${message}`,
+          },
+          { status: 200 }
+        )
+      }
     }
   } catch (error) {
     console.error('Error in WhatsApp config GET:', error)
