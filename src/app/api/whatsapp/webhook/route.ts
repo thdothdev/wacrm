@@ -468,13 +468,13 @@ async function handleUazapiInboundMessage(data: Record<string, unknown>) {
     const configUserId = config.user_id
 
     // Normalize message to WhatsAppMessage format
-    const normalizedMessage: WhatsAppMessage = {
-      id: messageId,
-      from,
-      timestamp: Math.floor((timestamp || Date.now()) / 1000).toString(),
-      type: getUazapiMessageType(messageType),
-      text: body ? { body } : undefined,
-    }
+  const normalizedMessage: WhatsAppMessage = {
+    id: messageId,
+    from: chatId || from,
+    timestamp: Math.floor((timestamp || Date.now()) / 1000).toString(),
+    type: getUazapiMessageType(messageType),
+    text: body ? { body } : undefined,
+  }
 
     // Add media if present
     if (hasMedia && mediaUrl) {
@@ -516,10 +516,10 @@ async function handleUazapiInboundMessage(data: Record<string, unknown>) {
     }
 
     // Contact (uazapi doesn't provide name, so use phone as name)
-    const contact = {
-      profile: { name: from },
-      wa_id: from,
-    }
+  const contact = {
+    profile: { name: chatId || from },
+    wa_id: chatId || from,
+  }
 
     // Decrypt instance_token for any media fetch that might be needed
     let instanceToken = ''
