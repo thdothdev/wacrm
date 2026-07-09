@@ -1553,12 +1553,16 @@
     },
     "appearance": {
       "title": "Aparencia",
-      "description": "Set o mode e accent colour used across o app. Salvard para este device — try it, it changes live.",
+      "description": "Escolha o idioma, modo e cor de destaque usados no sistema.",
       "mode": "Modo",
-      "useMode": "Use {mode} mode",
+      "useMode": "Usar modo {mode}",
       "active": "Ativo",
       "accentColor": "Cor de destaque",
-      "useTheme": "Use {name} theme"
+      "useTheme": "Usar tema {name}",
+      "language": "Idioma",
+      "systemLanguage": "Idioma do sistema",
+      "languageHint": "O sistema recarrega os textos automaticamente no idioma escolhido.",
+      "savingLanguage": "Salvando idioma..."
     },
     "security": {
       "title": "Login e seguranca",

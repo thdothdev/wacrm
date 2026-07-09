@@ -1,15 +1,18 @@
 import { getRequestConfig } from 'next-intl/server';
+import { cookies } from 'next/headers';
+
+import { DEFAULT_LOCALE, LOCALE_COOKIE, isAppLocale } from './locales';
 
 export default getRequestConfig(async () => {
-  // Read the locale from the environment, defaulting to Brazilian Portuguese.
-  const locale = process.env.NEXT_PUBLIC_APP_LOCALE || 'pt-BR';
+  const cookieStore = await cookies();
+  const savedLocale = cookieStore.get(LOCALE_COOKIE)?.value;
+  const locale = isAppLocale(savedLocale) ? savedLocale : DEFAULT_LOCALE;
 
   let messages;
   try {
     messages = (await import(`../../messages/${locale}.json`)).default;
   } catch (error) {
-    // Fallback to Portuguese if the requested dictionary doesn't exist yet.
-    messages = (await import(`../../messages/pt-BR.json`)).default;
+    messages = (await import(`../../messages/${DEFAULT_LOCALE}.json`)).default;
   }
 
   return {

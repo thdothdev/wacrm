@@ -1,28 +1,46 @@
 "use client";
 
-import { Check, Moon, Palette, SunMoon, Sun } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, Languages, Moon, Palette, SunMoon, Sun } from "lucide-react";
 
 import { useTheme } from "@/hooks/use-theme";
+import { SUPPORTED_LOCALES } from "@/i18n/locales";
 import { MODES, THEMES, type Mode, type ThemeId } from "@/lib/themes";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { SettingsPanelHead } from "./settings-panel-head";
 
 /**
- * Appearance panel — light/dark mode + accent-color picker.
- *
- * Two independent controls: a mode toggle (light / dark) and the
- * accent grid. Either applies + persists immediately. No save button:
- * each change is a single attribute swap on <html>, there's nothing
- * to roll back.
- *
- * Persistence: localStorage only (device-scoped). The boot script in
- * layout.tsx replays both choices before first paint on subsequent
- * loads.
+ * Appearance panel - language, light/dark mode, and accent-color picker.
+ * Mode/accent stay device-scoped in localStorage. Language is stored in a
+ * cookie so server-rendered text and client text use the same dictionary.
  */
 export function AppearancePanel() {
   const { theme, setTheme, mode, setMode } = useTheme();
   const t = useTranslations("Settings.appearance");
+  const locale = useLocale();
+  const router = useRouter();
+  const [savingLocale, setSavingLocale] = useState(false);
+
+  const updateLocale = async (nextLocale: string) => {
+    if (nextLocale === locale || savingLocale) return;
+
+    setSavingLocale(true);
+    try {
+      const response = await fetch("/api/locale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: nextLocale }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save locale");
+
+      router.refresh();
+    } finally {
+      setSavingLocale(false);
+    }
+  };
 
   return (
     <section className="max-w-3xl animate-in fade-in-50 duration-200">
@@ -32,6 +50,38 @@ export function AppearancePanel() {
       />
 
       <div className="space-y-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Languages className="size-4 text-muted-foreground" />
+          {t("language")}
+        </h3>
+
+        <div className="max-w-md rounded-lg border border-border bg-card p-4">
+          <label
+            htmlFor="app-language"
+            className="text-sm font-medium text-foreground"
+          >
+            {t("systemLanguage")}
+          </label>
+          <select
+            id="app-language"
+            value={locale}
+            disabled={savingLocale}
+            onChange={(event) => void updateLocale(event.target.value)}
+            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {SUPPORTED_LOCALES.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            {savingLocale ? t("savingLanguage") : t("languageHint")}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 space-y-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <SunMoon className="size-4 text-muted-foreground" />
           {t("mode")}
