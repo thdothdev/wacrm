@@ -1446,7 +1446,7 @@ async function findOrCreateContact(
 
   if (existingContact) {
     // Update name if it changed
-    if (name && name !== existingContact.name) {
+    if (isUsefulContactName(name, phone) && name !== existingContact.name) {
       await supabaseAdmin()
         .from('contacts')
         .update({ name, updated_at: new Date().toISOString() })
@@ -1465,7 +1465,7 @@ async function findOrCreateContact(
       account_id: accountId,
       user_id: configOwnerUserId,
       phone,
-      name: name || phone,
+      name: isUsefulContactName(name, phone) ? name : phone,
     })
     .select()
     .single()
@@ -1486,6 +1486,13 @@ async function findOrCreateContact(
   return { contact: newContact, wasCreated: true }
 }
 
+function isUsefulContactName(name: string | null | undefined, phone: string): name is string {
+  if (!name) return false
+  const trimmed = name.trim()
+  if (!trimmed) return false
+  if (trimmed.includes('@')) return false
+  return normalizePhone(trimmed) !== phone
+}
 async function findOrCreateConversation(
   accountId: string,
   configOwnerUserId: string,
