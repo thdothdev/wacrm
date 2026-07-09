@@ -273,6 +273,10 @@ export interface WhatsAppConfig {
   waba_id?: string;
   access_token: string;
   verify_token?: string;
+  instance_id?: string;
+  instance_token?: string;
+  uazapi_base_url?: string;
+  connection_state?: 'disconnected' | 'connecting' | 'connected' | 'hibernated';
   status: 'connected' | 'disconnected';
   connected_at?: string;
   /**

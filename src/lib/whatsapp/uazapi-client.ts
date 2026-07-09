@@ -13,7 +13,11 @@
  *   - Webhook: Validate using UAZAPI_WEBHOOK_TOKEN header
  */
 
-const UAZAPI_BASE_URL = process.env.UAZAPI_BASE_URL || 'https://eluminaai.uazapi.com'
+const DEFAULT_UAZAPI_BASE_URL = process.env.UAZAPI_BASE_URL || 'https://eluminaai.uazapi.com'
+
+function uazapiUrl(path: string, baseUrl = DEFAULT_UAZAPI_BASE_URL) {
+  return `${baseUrl.replace(/\/$/, '')}${path}`
+}
 const UAZAPI_ADMIN_TOKEN = process.env.UAZAPI_ADMIN_TOKEN
 
 export interface UazapiErrorResponse {
@@ -106,7 +110,7 @@ export async function connectInstance(
   const adminToken = requireAdminToken()
   const { phone } = args
 
-  const url = `${UAZAPI_BASE_URL}/instance/connect`
+  const url = uazapiUrl('/instance/connect')
   const body: Record<string, unknown> = {}
 
   if (phone) {
@@ -152,6 +156,8 @@ export interface GetInstanceStatusArgs {
   /**
    * The instance token returned from connectInstance or stored in the database.
    */
+  baseUrl?: string
+
   instanceToken: string
 }
 
@@ -159,6 +165,8 @@ export interface GetInstanceStatusResult {
   state: InstanceState
   phone?: string
   connected: boolean
+  instanceId?: string
+  name?: string
   createdAt?: string
   lastActivity?: string
 }
@@ -169,8 +177,8 @@ export interface GetInstanceStatusResult {
 export async function getInstanceStatus(
   args: GetInstanceStatusArgs
 ): Promise<GetInstanceStatusResult> {
-  const { instanceToken } = args
-  const url = `${UAZAPI_BASE_URL}/instance/status`
+  const { baseUrl, instanceToken } = args
+  const url = uazapiUrl('/instance/status', baseUrl)
 
   const response = await fetch(url, {
     method: 'GET',
@@ -185,18 +193,35 @@ export async function getInstanceStatus(
 
   const data = (await response.json()) as {
     state?: InstanceState
+    status?: InstanceState | { connected?: boolean; loggedIn?: boolean }
     phone?: string
     connected?: boolean
     created_at?: string
     last_activity?: string
+    instance?: {
+      id?: string
+      status?: InstanceState
+      connected?: boolean
+      owner?: string
+      profileName?: string
+      name?: string
+      created_at?: string
+      last_activity?: string
+    }
   }
+  const instance = data.instance
+  const rootStatus = data.status
+  const rootConnected = typeof rootStatus === 'object' ? rootStatus.connected ?? rootStatus.loggedIn : undefined
+  const state = data.state || instance?.status || (typeof rootStatus === 'string' ? rootStatus : rootConnected ? 'connected' : 'disconnected')
 
   return {
-    state: data.state || 'disconnected',
-    phone: data.phone,
-    connected: data.connected || false,
-    createdAt: data.created_at,
-    lastActivity: data.last_activity,
+    state,
+    phone: data.phone || instance?.owner,
+    connected: data.connected ?? instance?.connected ?? rootConnected ?? state === 'connected',
+    instanceId: instance?.id,
+    name: instance?.profileName || instance?.name,
+    createdAt: data.created_at || instance?.created_at,
+    lastActivity: data.last_activity || instance?.last_activity,
   }
 }
 
@@ -205,6 +230,7 @@ export async function getInstanceStatus(
 // ============================================================
 
 export interface SendTextMessageArgs {
+  baseUrl?: string
   /**
    * The instance token.
    */
@@ -282,6 +308,7 @@ export async function sendTextMessage(
   args: SendTextMessageArgs
 ): Promise<SendMessageResult> {
   const {
+    baseUrl,
     instanceToken,
     to,
     text,
@@ -294,7 +321,7 @@ export async function sendTextMessage(
     async: asyncMode,
   } = args
 
-  const url = `${UAZAPI_BASE_URL}/send/text`
+  const url = uazapiUrl('/send/text', baseUrl)
   const body: Record<string, unknown> = {
     to,
     text,
@@ -338,6 +365,7 @@ export async function sendTextMessage(
 export type MediaKind = 'image' | 'video' | 'document' | 'audio'
 
 export interface SendMediaMessageArgs {
+  baseUrl?: string
   instanceToken: string
   to: string
 
@@ -382,6 +410,7 @@ export async function sendMediaMessage(
   args: SendMediaMessageArgs
 ): Promise<SendMessageResult> {
   const {
+    baseUrl,
     instanceToken,
     to,
     kind,
@@ -397,7 +426,7 @@ export async function sendMediaMessage(
     async: asyncMode,
   } = args
 
-  const url = `${UAZAPI_BASE_URL}/send/${kind}`
+  const url = uazapiUrl(`/send/${kind}`, baseUrl)
   const body: Record<string, unknown> = {
     to,
     link,
@@ -471,13 +500,13 @@ export async function setWebhook(args: SetWebhookArgs): Promise<void> {
   const adminToken = requireAdminToken()
   const { url, authHeader } = args
 
-  const uazapiUrl = `${UAZAPI_BASE_URL}/webhook`
+  const urlEndpoint = uazapiUrl('/webhook')
   const body = {
     url,
     auth_header: authHeader,
   }
 
-  const response = await fetch(uazapiUrl, {
+  const response = await fetch(urlEndpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -500,7 +529,7 @@ export async function getWebhook(): Promise<{
   createdAt?: string
 }> {
   const adminToken = requireAdminToken()
-  const url = `${UAZAPI_BASE_URL}/webhook`
+  const url = uazapiUrl('/webhook')
 
   const response = await fetch(url, {
     method: 'GET',
@@ -542,7 +571,7 @@ export async function disconnectInstance(
   args: DisconnectInstanceArgs
 ): Promise<void> {
   const { instanceToken } = args
-  const url = `${UAZAPI_BASE_URL}/instance/disconnect`
+  const url = uazapiUrl('/instance/disconnect')
 
   const response = await fetch(url, {
     method: 'POST',
@@ -563,7 +592,7 @@ export async function deleteInstance(
   args: DisconnectInstanceArgs
 ): Promise<void> {
   const { instanceToken } = args
-  const url = `${UAZAPI_BASE_URL}/instance`
+  const url = uazapiUrl('/instance')
 
   const response = await fetch(url, {
     method: 'DELETE',

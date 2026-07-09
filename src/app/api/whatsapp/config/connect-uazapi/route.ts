@@ -1,12 +1,10 @@
+import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { connectInstance, setWebhook } from '@/lib/whatsapp/uazapi-client'
-import { encrypt } from '@/lib/whatsapp/encryption'
+import { getInstanceStatus } from '@/lib/whatsapp/uazapi-client'
+import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
 
-/**
- * Resolve the caller's account_id from their profile.
- */
 async function resolveAccountId(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -23,28 +21,25 @@ async function resolveAccountId(
 function supabaseAdmin() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 }
 
-/**
- * POST /api/whatsapp/config/connect-uazapi
- *
- * Initiates a WhatsApp connection via uazapi.
- * Returns a QR code or pairing code that the user scans/enters on their WhatsApp app.
- *
- * Request body:
- *   { phone?: '5511999999999' }  // Optional: if provided, returns pairing code; else returns QR code
- *
- * Response:
- *   { qrcode: 'data:image/png;base64,...', instanceToken: '...' }  // QR mode
- *   { pairingCode: '111-222', instanceToken: '...' }  // Pairing mode
- *   { error: '...' }  // Error
- */
+function normalizeBaseUrl(value: string) {
+  const url = new URL(value.trim())
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('URL must start with http:// or https://')
+  }
+  return url.origin + url.pathname.replace(/\/$/, '')
+}
+
+function fallbackInstanceId(baseUrl: string, token: string) {
+  return `uazapi:${createHash('sha256').update(`${baseUrl}:${token}`).digest('hex').slice(0, 24)}`
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-
     const {
       data: { user },
       error: authError,
@@ -58,137 +53,111 @@ export async function POST(request: Request) {
     if (!accountId) {
       return NextResponse.json(
         { error: 'Your profile is not linked to an account.' },
-        { status: 403 }
+        { status: 403 },
       )
     }
 
-    const body = await request.json() as { phone?: string }
-    const { phone } = body
+    const body = (await request.json()) as {
+      baseUrl?: string
+      instanceToken?: string
+      instanceId?: string
+    }
 
-    // Check if this account already has a uazapi instance connected
+    if (!body.baseUrl?.trim() || !body.instanceToken?.trim()) {
+      return NextResponse.json(
+        { error: 'URL do servidor e token da instancia sao obrigatorios.' },
+        { status: 400 },
+      )
+    }
+
+    let baseUrl: string
+    try {
+      baseUrl = normalizeBaseUrl(body.baseUrl)
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : 'URL invalida.' },
+        { status: 400 },
+      )
+    }
+
+    const instanceToken = body.instanceToken.trim()
+    const status = await getInstanceStatus({ baseUrl, instanceToken })
+    const instanceId = body.instanceId?.trim() || status.instanceId || fallbackInstanceId(baseUrl, instanceToken)
+    const encryptedToken = encrypt(instanceToken)
+    const now = new Date().toISOString()
+
+    const { data: claimed, error: claimedError } = await supabaseAdmin()
+      .from('whatsapp_config')
+      .select('account_id')
+      .eq('instance_id', instanceId)
+      .neq('account_id', accountId)
+      .maybeSingle()
+
+    if (claimedError) {
+      console.error('Error checking uazapi instance ownership:', claimedError)
+      return NextResponse.json({ error: 'Failed to validate configuration' }, { status: 500 })
+    }
+
+    if (claimed) {
+      return NextResponse.json(
+        { error: 'Esta instancia uazapi ja esta conectada em outra conta.' },
+        { status: 409 },
+      )
+    }
+
     const { data: existing } = await supabase
       .from('whatsapp_config')
-      .select('id, instance_id, instance_token, connection_state')
+      .select('id')
       .eq('account_id', accountId)
       .maybeSingle()
 
-    if (existing?.instance_token && existing.connection_state === 'connected') {
-      return NextResponse.json(
-        { error: 'This account already has a WhatsApp instance connected. Disconnect first.' },
-        { status: 400 }
-      )
+    const connected = status.connected || status.state === 'connected'
+    const baseRow = {
+      phone_number_id: instanceId,
+      waba_id: null,
+      access_token: encryptedToken,
+      verify_token: null,
+      instance_id: instanceId,
+      instance_token: encryptedToken,
+      uazapi_base_url: baseUrl,
+      connection_state: connected ? 'connected' : status.state,
+      status: connected ? 'connected' : 'disconnected',
+      connected_at: connected ? now : null,
+      registered_at: null,
+      subscribed_apps_at: null,
+      last_registration_error: null,
+      updated_at: now,
     }
 
-    // Call uazapi to initiate connection
-    try {
-      const result = await connectInstance({ phone })
+    const query = existing
+      ? supabase.from('whatsapp_config').update(baseRow).eq('account_id', accountId)
+      : supabase.from('whatsapp_config').insert({ account_id: accountId, user_id: user.id, ...baseRow })
 
-      if (!result.success || !result.instanceToken) {
-        return NextResponse.json(
-          { error: result.message || 'Failed to initiate connection' },
-          { status: 400 }
-        )
-      }
-
-      // Encrypt the instance token before storing
-      let encryptedInstanceToken: string
-      try {
-        encryptedInstanceToken = encrypt(result.instanceToken)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown encryption error'
-        console.error('Token encryption failed:', message)
-        return NextResponse.json(
-          {
-            error:
-              'Failed to encrypt token. Check that ENCRYPTION_KEY is a valid 64-character hex string.',
-          },
-          { status: 500 }
-        )
-      }
-
-      // Store the pending connection state in the database
-      const baseRow = {
-        instance_id: result.instanceId || null,
-        instance_token: encryptedInstanceToken,
-        connection_state: 'connecting',
-        connected_at: null,
-        updated_at: new Date().toISOString(),
-      }
-
-      if (existing) {
-        // Update existing row
-        const { error: updateError } = await supabase
-          .from('whatsapp_config')
-          .update(baseRow)
-          .eq('account_id', accountId)
-
-        if (updateError) {
-          console.error('Error updating whatsapp_config:', updateError)
-          return NextResponse.json(
-            { error: 'Failed to update configuration' },
-            { status: 500 }
-          )
-        }
-      } else {
-        // Insert new row
-        const { error: insertError } = await supabase
-          .from('whatsapp_config')
-          .insert({
-            account_id: accountId,
-            user_id: user.id,
-            ...baseRow,
-          })
-
-        if (insertError) {
-          console.error('Error inserting whatsapp_config:', insertError)
-          return NextResponse.json(
-            { error: 'Failed to save configuration' },
-            { status: 500 }
-          )
-        }
-      }
-
-      // Return QR code or pairing code
-      return NextResponse.json({
-        success: true,
-        qrcode: result.qrcode,
-        pairingCode: result.pairingCode,
-        instanceToken: result.instanceToken, // Return plain token so frontend can store it if needed
-        message: result.qrcode
-          ? 'Scan this QR code with your WhatsApp app'
-          : 'Enter this pairing code in WhatsApp → Link Device',
-      })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown uazapi error'
-      console.error('uazapi connectInstance failed:', message)
-      return NextResponse.json(
-        { error: `uazapi error: ${message}` },
-        { status: 400 }
-      )
+    const { error: saveError } = await query
+    if (saveError) {
+      console.error('Error saving uazapi config:', saveError)
+      return NextResponse.json({ error: 'Failed to save configuration' }, { status: 500 })
     }
+
+    return NextResponse.json({
+      success: true,
+      connected,
+      state: status.state,
+      phone: status.phone,
+      name: status.name,
+      instanceId,
+      baseUrl,
+    })
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Internal server error'
     console.error('Error in /config/connect-uazapi:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
-/**
- * GET /api/whatsapp/config/connect-uazapi
- *
- * Check the current connection status of a uazapi instance.
- * Used by the frontend to poll after showing QR code.
- *
- * Response:
- *   { connected: true, phone: '5511999999999' }
- *   { connected: false, state: 'connecting' }
- */
 export async function GET() {
   try {
     const supabase = await createClient()
-
     const {
       data: { user },
       error: authError,
@@ -200,15 +169,12 @@ export async function GET() {
 
     const accountId = await resolveAccountId(supabase, user.id)
     if (!accountId) {
-      return NextResponse.json(
-        { error: 'Your profile is not linked to an account.' },
-        { status: 403 }
-      )
+      return NextResponse.json({ error: 'Your profile is not linked to an account.' }, { status: 403 })
     }
 
     const { data: config } = await supabase
       .from('whatsapp_config')
-      .select('instance_token, connection_state')
+      .select('id, instance_token, uazapi_base_url, connection_state')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -216,16 +182,25 @@ export async function GET() {
       return NextResponse.json({ connected: false, reason: 'not_configured' })
     }
 
-    // Check connection state stored in DB (we'll update this when webhooks arrive)
-    return NextResponse.json({
-      connected: config.connection_state === 'connected',
-      state: config.connection_state,
+    const instanceToken = decrypt(config.instance_token)
+    const status = await getInstanceStatus({
+      baseUrl: config.uazapi_base_url || undefined,
+      instanceToken,
     })
+    const connected = status.connected || status.state === 'connected'
+
+    await supabase
+      .from('whatsapp_config')
+      .update({
+        connection_state: connected ? 'connected' : status.state,
+        status: connected ? 'connected' : 'disconnected',
+        connected_at: connected ? new Date().toISOString() : null,
+      })
+      .eq('id', config.id)
+
+    return NextResponse.json({ connected, state: status.state, phone: status.phone, name: status.name })
   } catch (error) {
     console.error('Error in /config/connect-uazapi GET:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

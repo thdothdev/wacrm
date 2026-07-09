@@ -189,13 +189,10 @@ export default function InboxPage() {
         return;
       }
 
-      const { data } = await supabase
-        .from("whatsapp_config")
-        .select("status")
-        .eq("account_id", accountId)
-        .maybeSingle();
+      const res = await fetch("/api/whatsapp/config", { cache: "no-store" });
+      const payload = await res.json();
 
-      setWhatsappConnected(data?.status === "connected");
+      setWhatsappConnected(Boolean(payload.connected));
     };
 
     checkConnection();

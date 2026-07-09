@@ -6,7 +6,7 @@ import {
   subscribeWabaToApp,
   verifyPhoneNumber,
 } from '@/lib/whatsapp/meta-api'
-import { connectInstance, getInstanceStatus } from '@/lib/whatsapp/uazapi-client'
+import { getInstanceStatus } from '@/lib/whatsapp/uazapi-client'
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
 
 /**
@@ -88,7 +88,7 @@ export async function GET() {
 
     const { data: config, error: configError } = await supabase
       .from('whatsapp_config')
-      .select('phone_number_id, access_token, instance_token, connection_state, status')
+      .select('phone_number_id, access_token, instance_token, uazapi_base_url, connection_state, status')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -116,7 +116,10 @@ export async function GET() {
       // uazapi mode
       try {
         const decryptedInstanceToken = decrypt(config.instance_token)
-        const status = await getInstanceStatus({ instanceToken: decryptedInstanceToken })
+        const status = await getInstanceStatus({
+          baseUrl: config.uazapi_base_url || undefined,
+          instanceToken: decryptedInstanceToken,
+        })
         return NextResponse.json({
           connected: status.connected,
           api_type: 'uazapi',

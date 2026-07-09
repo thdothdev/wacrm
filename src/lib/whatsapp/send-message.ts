@@ -268,8 +268,8 @@ export async function sendMessageToConversation(
   }
 
   // Detect which API type is in use
-  const isUazapi = config.instance_token && !config.access_token;
-  const isMeta = config.access_token && !config.instance_token;
+  const isUazapi = Boolean(config.instance_token);
+  const isMeta = Boolean(config.access_token && !config.instance_token);
 
   if (!isUazapi && !isMeta) {
     throw new SendMessageError(
@@ -445,20 +445,22 @@ export async function sendMessageToConversation(
       }
       if (isMediaKind) {
         const result = await uazapiSendMediaMessage({
+          baseUrl: config.uazapi_base_url || undefined,
           instanceToken: credential,
-          phone,
+          to: phone,
           kind: messageType as UazapiMediaKind,
           link: mediaUrl!,
           caption: contentText || undefined,
         });
-        return result.messageId;
+        return result.messageid;
       }
       const result = await uazapiSendTextMessage({
+        baseUrl: config.uazapi_base_url || undefined,
         instanceToken: credential,
-        phone,
+        to: phone,
         text: contentText!,
       });
-      return result.messageId;
+      return result.messageid;
     }
   };
 

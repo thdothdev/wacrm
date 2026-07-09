@@ -62,6 +62,7 @@ interface WhatsAppMessage {
   }
   /** Present when the customer swipe-replies to one of our messages. */
   context?: { id: string }
+  media_url?: string
 }
 
 interface WhatsAppWebhookEntry {
@@ -302,7 +303,7 @@ async function handleUazapiInboundMessage(data: Record<string, unknown>) {
     }
 
     // Find config by instance_id
-    const { data: configRows, error: configError } = await supabaseAdmin()
+    let { data: configRows, error: configError } = await supabaseAdmin()
       .from('whatsapp_config')
       .select('*')
       .eq('instance_id', instanceId)
@@ -317,8 +318,21 @@ async function handleUazapiInboundMessage(data: Record<string, unknown>) {
     }
 
     if (!configRows || configRows.length === 0) {
-      console.error('[webhook] No config found for uazapi instance_id:', instanceId)
-      return
+      const { data: uazapiRows, error: fallbackError } = await supabaseAdmin()
+        .from('whatsapp_config')
+        .select('*')
+        .not('instance_token', 'is', null)
+
+      if (fallbackError || !uazapiRows || uazapiRows.length !== 1) {
+        console.error('[webhook] No config found for uazapi instance_id:', instanceId)
+        return
+      }
+
+      configRows = uazapiRows
+      await supabaseAdmin()
+        .from('whatsapp_config')
+        .update({ instance_id: instanceId, updated_at: new Date().toISOString() })
+        .eq('id', uazapiRows[0].id)
     }
 
     if (configRows.length > 1) {
@@ -518,7 +532,6 @@ function extractFilename(url: string): string {
   } catch {
     return 'file'
   }
-}
 }
 
 async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
