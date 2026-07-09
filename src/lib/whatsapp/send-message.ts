@@ -279,11 +279,6 @@ const sanitizedPhone = isUazapi
   ? sanitizePhoneForUazapi(contact.phone)
   : sanitizePhoneForMeta(contact.phone);
 
-console.log('[PHONE SEND DEBUG]', {
-  original: contact.phone,
-  sanitized: sanitizedPhone,
-  provider: isUazapi ? 'uazapi' : 'meta'
-});
 
   // Decrypt appropriate credentials
   let credential: string;

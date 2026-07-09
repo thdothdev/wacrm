@@ -348,11 +348,6 @@ export async function sendTextMessage(
   text,
 }
 
-console.log('[UAZAPI REQUEST DEBUG]', {
-  url,
-  body,
-  hasToken: Boolean(instanceToken),
-})
 
   if (delay !== undefined) body.delay = delay
   if (replyid) body.replyid = replyid
@@ -362,7 +357,7 @@ console.log('[UAZAPI REQUEST DEBUG]', {
   if (readmessages) body.readmessages = readmessages
   if (asyncMode) body.async = asyncMode
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -370,6 +365,16 @@ console.log('[UAZAPI REQUEST DEBUG]', {
     },
     body: JSON.stringify(body),
   })
+
+  // Some UAZAPI deployments expose text send as /send/message.
+  // Keep /send/text as the primary path because this instance advertises POST there.
+  if (response.status === 405) {
+    const params = new URLSearchParams({ number: to, text })
+    response = await fetch(`${uazapiUrl('/send/message', baseUrl)}?${params}`, {
+      method: 'GET',
+      headers: { token: instanceToken },
+    })
+  }
 
   if (!response.ok) {
     await throwUazapiError(response, `Failed to send text message: ${response.status}`)
@@ -453,9 +458,10 @@ export async function sendMediaMessage(
     async: asyncMode,
   } = args
 
-  const url = uazapiUrl(`/send/${kind}`, baseUrl)
+  const url = uazapiUrl('/send/media', baseUrl)
   const body: Record<string, unknown> = {
     number: to,
+    type: kind,
     link
   }
 

@@ -411,11 +411,18 @@ async function handleUazapiInboundMessage(data: Record<string, unknown>) {
     const quotedMessageId = getString(messageData, ['quotedMessageId', 'quoted_message_id'])
 
     if (!from || !messageId) {
+      const keys = describePayloadKeys(messageData)
+      const state = getString(messageData, ['state'])
+      const owner = getString(messageData, ['owner'])
+      if (state || owner || keys.includes('BaseUrl')) {
+        console.log('[webhook] ignoring uazapi non-message event:', keys)
+        return
+      }
       console.error('[webhook] uazapi message missing required fields:', {
         instanceId,
         from,
         messageId,
-        payloadKeys: describePayloadKeys(messageData),
+        payloadKeys: keys,
       })
       return
     }
