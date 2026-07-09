@@ -3,6 +3,19 @@
  * Meta requires digits only — no + prefix, no spaces, no dashes.
  * e.g. "+370 63949836" → "37063949836"
  */
+export function sanitizePhoneForUazapi(phone: string): string {
+  if (!phone) return '';
+
+  let cleaned = phone.replace(/\D/g, '');
+
+  // Brasil: adiciona 55 se não existir
+  if (cleaned.length === 10 || cleaned.length === 11) {
+    cleaned = `55${cleaned}`;
+  }
+
+  return cleaned;
+}
+
 export function sanitizePhoneForMeta(phone: string): string {
   if (!phone) return ''
   return phone.replace(/\D/g, '')

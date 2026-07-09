@@ -43,6 +43,7 @@ import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
 import {
   sanitizePhoneForMeta,
+  sanitizePhoneForUazapi,
   isValidE164,
   phoneVariants,
   isRecipientNotAllowedError,
@@ -246,14 +247,17 @@ export async function sendMessageToConversation(
     );
   }
 
-  const sanitizedPhone = sanitizePhoneForMeta(contact.phone);
-  if (!isValidE164(sanitizedPhone)) {
-    throw new SendMessageError(
-      'bad_request',
-      'Invalid phone number format',
-      400
-    );
-  }
+  const sanitizedPhone = isUazapi
+  ? sanitizePhoneForUazapi(contact.phone)
+  : sanitizePhoneForMeta(contact.phone);
+
+if (!sanitizedPhone) {
+  throw new SendMessageError(
+    'bad_request',
+    'Invalid phone number format',
+    400
+  );
+}
 
   // WhatsApp config, account-scoped.
   const { data: config, error: configError } = await db
