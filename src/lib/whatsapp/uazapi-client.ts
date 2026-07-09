@@ -462,7 +462,7 @@ export async function sendMediaMessage(
   const body: Record<string, unknown> = {
     number: to,
     type: kind,
-    link
+    file: link
   }
 
   if (filename) body.filename = filename
