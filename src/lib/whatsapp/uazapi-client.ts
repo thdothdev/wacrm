@@ -344,7 +344,7 @@ export async function sendTextMessage(
 
   const url = uazapiUrl('/send/text', baseUrl)
   const body: Record<string, unknown> = {
-  to,
+  number: to,
   text,
 }
 
