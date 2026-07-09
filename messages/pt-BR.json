@@ -1472,7 +1472,7 @@
       "step2_3": "Follow o setup wizard para link seu business",
       "step3": "Obter credenciais da API",
       "step3_1": "Va para WhatsApp > API Setup",
-      "step3_2": "Copiar seu <strong class=\"text-foreground\">Telefone Number ID</strong>",
+      "step3_2": "Copiar seu <strong>Telefone Number ID</strong>",
       "step3_3": "Copiar seu <strong class=\"text-foreground\">WhatsApp Business Account ID</strong>",
       "step3_4": "Generate a <strong class=\"text-foreground\">Permanent Access Token</strong> de Business Configuracoes > System Users",
       "step4": "Configurar webhooks",
