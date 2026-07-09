@@ -455,8 +455,8 @@ export async function sendMediaMessage(
 
   const url = uazapiUrl(`/send/${kind}`, baseUrl)
   const body: Record<string, unknown> = {
-    to,
-    link,
+    number: to,
+    link
   }
 
   if (filename) body.filename = filename
