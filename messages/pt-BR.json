@@ -413,7 +413,7 @@
     },
     "importModal": {
       "title": "Importar contatos",
-      "desc": "Enviar arquivo a CSV com a obrigatorio <telefoneCode>telefone</telefoneCode> column. Optional: <nenhummeCode>nenhumme</nenhummeCode>, <e-mailCode>e-mail</e-mailCode>, <empresaCode>empresa</empresaCode>, <tagsCode>tags</tagsCode> (comma-separated; quote multi-tag cells).",
+      "desc": "Enviar arquivo CSV com a coluna obrigatória telefone. Opcional: nenhumme, e-mail, empresa, tags (separados por vírgula; use aspas para células com múltiplas tags).",
       "uploadDropzone": "Clique para escolher um arquivo CSV",
       "uploadHint": ".csv up para seu browser limit",
       "rowsReady": "{count} row ready",
