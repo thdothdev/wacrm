@@ -239,22 +239,11 @@ export async function sendMessageToConversation(
   }
 
   const contact = conversation.contact;
-  if (!contact?.phone) {
-    throw new SendMessageError(
-      'bad_request',
-      'Contact phone number not found',
-      400
-    );
-  }
 
-  const sanitizedPhone = isUazapi
-  ? sanitizePhoneForUazapi(contact.phone)
-  : sanitizePhoneForMeta(contact.phone);
-
-if (!sanitizedPhone) {
+if (!contact?.phone) {
   throw new SendMessageError(
     'bad_request',
-    'Invalid phone number format',
+    'Contact phone number not found',
     400
   );
 }
@@ -275,16 +264,26 @@ if (!sanitizedPhone) {
   }
 
   // Detect which API type is in use
-  const isUazapi = Boolean(config.instance_token);
-  const isMeta = Boolean(config.access_token && !config.instance_token);
+const isUazapi = Boolean(config.instance_token);
+const isMeta = Boolean(config.access_token && !config.instance_token);
 
-  if (!isUazapi && !isMeta) {
-    throw new SendMessageError(
-      'whatsapp_misconfigured',
-      'WhatsApp config is incomplete. Missing credentials for both Meta and uazapi.',
-      500
-    );
-  }
+if (!isUazapi && !isMeta) {
+  throw new SendMessageError(
+    'whatsapp_misconfigured',
+    'WhatsApp config is incomplete. Missing credentials for both Meta and uazapi.',
+    500
+  );
+}
+
+const sanitizedPhone = isUazapi
+  ? sanitizePhoneForUazapi(contact.phone)
+  : sanitizePhoneForMeta(contact.phone);
+
+console.log('[PHONE SEND DEBUG]', {
+  original: contact.phone,
+  sanitized: sanitizedPhone,
+  provider: isUazapi ? 'uazapi' : 'meta'
+});
 
   // Decrypt appropriate credentials
   let credential: string;
