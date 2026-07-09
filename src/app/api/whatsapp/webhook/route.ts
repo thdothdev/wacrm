@@ -191,7 +191,7 @@ export async function POST(request: Request) {
   // - Meta uses x-hub-signature-256 header
   // - uazapi may use Authorization header, or no custom header at all.
   const isMetaFormat = signature !== null
-  const isUazapiFormat = authorization !== null || isUazapiWebhookBody(body)
+  const isUazapiFormat = !isMetaFormat
 
   // Verify based on detected format
   if (isMetaFormat) {
@@ -200,6 +200,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
   } else if (isUazapiFormat) {
+    if (authorization === null && !isUazapiWebhookBody(body)) {
+      console.warn(
+        '[webhook] accepting non-Meta JSON as uazapi; payload keys:',
+        describePayloadKeys(body)
+      )
+    }
     console.log('[webhook] uazapi webhook accepted (validation via IP/URL secrecy)')
   } else {
     console.warn('[webhook] rejected request with no recognized provider payload')
