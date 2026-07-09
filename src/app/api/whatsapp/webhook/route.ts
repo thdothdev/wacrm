@@ -177,11 +177,21 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-hub-signature-256')
   const authorization = request.headers.get('authorization')
 
+  let body:
+    | { entry?: WhatsAppWebhookEntry[] }
+    | { event?: string; data?: unknown }
+    | Record<string, unknown>
+  try {
+    body = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
   // Try to determine which API format this is:
   // - Meta uses x-hub-signature-256 header
-  // - uazapi uses Authorization header
+  // - uazapi may use Authorization header, or no custom header at all.
   const isMetaFormat = signature !== null
-  const isUazapiFormat = authorization !== null
+  const isUazapiFormat = authorization !== null || isUazapiWebhookBody(body)
 
   // Verify based on detected format
   if (isMetaFormat) {
@@ -190,25 +200,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
   } else if (isUazapiFormat) {
-    // uazapi doesn't support custom headers, so we accept ANY request with
-    // Authorization header. Security is maintained via:
-    // 1. IP whitelist (configure in uazapi admin panel to only send from their IPs)
-    // 2. Webhook URL secrecy (use a long random path like /api/webhook/secret-token-abc123)
-    // 3. In future: uazapi may support request body signatures
     console.log('[webhook] uazapi webhook accepted (validation via IP/URL secrecy)')
   } else {
-    // No recognized signature format
-    console.warn('[webhook] rejected request with no signature or authorization header')
+    console.warn('[webhook] rejected request with no recognized provider payload')
     return NextResponse.json({ error: 'Missing verification' }, { status: 401 })
   }
-
-  let body: { entry?: WhatsAppWebhookEntry[] } | { event?: string; data?: unknown }
-  try {
-    body = JSON.parse(rawBody)
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
   // Process AFTER the response so we ack the provider within their timeout
   // (Meta ~20s, uazapi ~30s). A slow ack triggers retries + duplicate inserts.
   //
@@ -225,9 +221,9 @@ export async function POST(request: Request) {
   after(async () => {
     try {
       // Detect payload format and route to appropriate handler
-      if ('event' in body) {
+      if (isUazapiFormat) {
         // uazapi format: { event: '...', data: {...} }
-        await processUazapiWebhook(body as { event?: string; data?: unknown })
+        await processUazapiWebhook(normalizeUazapiWebhookBody(body))
       } else {
         // Meta format: { entry: [...] }
         await processWebhook(body as { entry?: WhatsAppWebhookEntry[] })
@@ -240,6 +236,110 @@ export async function POST(request: Request) {
   return NextResponse.json({ status: 'received' }, { status: 200 })
 }
 
+function isUazapiWebhookBody(body: unknown): boolean {
+  const record = getRecord(body)
+  if (!record) return false
+  if (getString(record, ['event', 'Event', 'eventType', 'EventType', 'type'])) {
+    return true
+  }
+  return Boolean(
+    record.instanceId ||
+      record.instanceid ||
+      record.instance ||
+      record.messageId ||
+      record.messageid ||
+      record.chatId ||
+      record.chatid ||
+      record.data ||
+      record.Data ||
+      record.payload ||
+      record.Payload ||
+      record.key ||
+      record.message
+  )
+}
+
+function normalizeUazapiWebhookBody(
+  body: Record<string, unknown>
+): { event?: string; data?: unknown } {
+  return {
+    event:
+      getString(body, ['event', 'Event', 'eventType', 'EventType', 'type']) ||
+      'messages.new',
+    data:
+      getRecordValue(body, ['data', 'Data', 'payload', 'Payload']) || body,
+  }
+}
+
+function getRecordValue(
+  record: Record<string, unknown>,
+  keys: string[]
+): unknown {
+  for (const key of keys) {
+    if (record[key] !== undefined && record[key] !== null) return record[key]
+  }
+  return undefined
+}
+
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  return value as Record<string, unknown>
+}
+
+function getString(
+  record: Record<string, unknown> | undefined,
+  keys: string[]
+): string | undefined {
+  if (!record) return undefined
+  const value = getRecordValue(record, keys)
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return undefined
+}
+
+function getPayloadRecord(data: Record<string, unknown>): Record<string, unknown> {
+  const messages = data.messages
+  if (Array.isArray(messages) && getRecord(messages[0])) {
+    return messages[0] as Record<string, unknown>
+  }
+
+  const wrapped = getRecord(
+    getRecordValue(data, [
+      'data',
+      'Data',
+      'payload',
+      'Payload',
+      'messageData',
+      'message_data',
+      'MessageData',
+    ])
+  )
+  if (wrapped) return getPayloadRecord(wrapped)
+
+  const message = getRecord(getRecordValue(data, ['message', 'Message']))
+  return message || data
+}
+
+function getUazapiMessageText(data: Record<string, unknown>): string | undefined {
+  const direct = getString(data, ['body', 'text', 'message', 'content', 'caption'])
+  if (direct) return direct
+
+  const message = getRecord(getRecordValue(data, ['message', 'Message']))
+  const extendedText = getRecord(message?.extendedTextMessage)
+  return (
+    getString(message, ['conversation']) ||
+    getString(extendedText, ['text']) ||
+    getString(getRecord(message?.imageMessage), ['caption']) ||
+    getString(getRecord(message?.videoMessage), ['caption']) ||
+    getString(getRecord(message?.documentMessage), ['caption'])
+  )
+}
+
+function describePayloadKeys(value: unknown): string {
+  const record = getRecord(value)
+  if (!record) return typeof value
+  return Object.keys(record).slice(0, 12).join(',') || 'empty'
+}
 /**
  * Process uazapi webhook events.
  * uazapi payload format:
@@ -253,10 +353,11 @@ async function processUazapiWebhook(body: { event?: string; data?: unknown }) {
 
   console.log('[webhook] Received uazapi event:', event)
 
-  if (event === 'messages.new') {
-    await handleUazapiInboundMessage(data as Record<string, unknown>)
-  } else if (event === 'message.status') {
+  const eventName = event.toLowerCase()
+  if (eventName.includes('status')) {
     await handleUazapiMessageStatus(data as Record<string, unknown>)
+  } else if (eventName.includes('message')) {
+    await handleUazapiInboundMessage(data as Record<string, unknown>)
   } else {
     console.log('[webhook] Unknown uazapi event type:', event)
   }
@@ -282,32 +383,49 @@ async function handleUazapiInboundMessage(data: Record<string, unknown>) {
     //   mediaUrl?: "..."
     // }
 
-    const instanceId = data.instanceId as string | undefined
-    const chatId = data.chatId as string | undefined
-    const from = data.from as string | undefined
-    const messageId = data.messageId as string | undefined
-    const body = data.body as string | undefined
-    const messageType = data.type as string | undefined
-    const timestamp = data.timestamp as number | undefined
-    const hasMedia = data.hasMedia as boolean | undefined
-    const mediaUrl = data.mediaUrl as string | undefined
-    const quotedMessageId = data.quotedMessageId as string | undefined
+    const messageData = getPayloadRecord(data)
+    const key = getRecord(messageData.key)
+    const instance = getRecord(messageData.instance)
+    const instanceId =
+      getString(messageData, ['instanceId', 'instanceid', 'instanceName']) ||
+      getString(instance, ['id', 'name'])
+    const chatId =
+      getString(messageData, ['chatId', 'chatid', 'chat_id', 'remoteJid']) ||
+      getString(key, ['remoteJid', 'participant'])
+    const from = getString(messageData, ['from', 'sender', 'senderId']) || chatId
+    const messageId =
+      getString(messageData, ['messageId', 'messageid', 'id']) ||
+      getString(key, ['id'])
+    const body = getUazapiMessageText(messageData)
+    const messageType = getString(messageData, ['type', 'messageType'])
+    const rawTimestamp = getRecordValue(messageData, ['timestamp', 'messageTimestamp'])
+    const timestamp = Number(rawTimestamp) || undefined
+    const hasMedia = Boolean(getRecordValue(messageData, ['hasMedia']))
+    const mediaUrl = getString(messageData, ['mediaUrl', 'media_url', 'url'])
+    const quotedMessageId = getString(messageData, ['quotedMessageId', 'quoted_message_id'])
 
-    if (!instanceId || !from || !messageId) {
+    if (!from || !messageId) {
       console.error('[webhook] uazapi message missing required fields:', {
         instanceId,
         from,
         messageId,
+        payloadKeys: describePayloadKeys(messageData),
       })
       return
     }
 
-    // Find config by instance_id
-    let { data: configRows, error: configError } = await supabaseAdmin()
-      .from('whatsapp_config')
-      .select('*')
-      .eq('instance_id', instanceId)
+    let configRows = null
+    let configError = null
 
+    if (instanceId) {
+      const result = await supabaseAdmin()
+        .from('whatsapp_config')
+        .select('*')
+        .eq('instance_id', instanceId)
+
+      configRows = result.data
+      configError = result.error
+    }
     if (configError) {
       console.error(
         '[webhook] Error fetching config for instance_id:',
@@ -329,10 +447,12 @@ async function handleUazapiInboundMessage(data: Record<string, unknown>) {
       }
 
       configRows = uazapiRows
-      await supabaseAdmin()
-        .from('whatsapp_config')
-        .update({ instance_id: instanceId, updated_at: new Date().toISOString() })
-        .eq('id', uazapiRows[0].id)
+      if (instanceId) {
+        await supabaseAdmin()
+          .from('whatsapp_config')
+          .update({ instance_id: instanceId, updated_at: new Date().toISOString() })
+          .eq('id', uazapiRows[0].id)
+      }
     }
 
     if (configRows.length > 1) {
@@ -438,7 +558,7 @@ async function handleUazapiMessageStatus(data: Record<string, unknown>) {
     //   timestamp: 1234567890
     // }
 
-    const messageId = data.messageId as string | undefined
+    const messageId = (data.messageId || data.messageid || data.id) as string | undefined
     const status = data.status as string | undefined
     const timestamp = data.timestamp as number | undefined
 
