@@ -32,15 +32,36 @@ export interface UazapiErrorResponse {
 /**
  * Throw a structured error from uazapi response
  */
-async function throwUazapiError(response: Response, fallback: string): Promise<never> {
+async function throwUazapiError(
+  response: Response,
+  fallback: string
+): Promise<never> {
   let message = fallback
+
   try {
-    const data = (await response.json()) as UazapiErrorResponse
-    if (data.error?.message) message = data.error.message
-    else if (data.message) message = data.message
-  } catch {
-    // Response body wasn't JSON — keep the fallback
-  }
+    const raw = await response.text()
+
+    console.error('[UAZAPI RAW ERROR]', raw)
+
+    try {
+      const data = JSON.parse(raw)
+
+      if (data.error?.message) {
+        message = data.error.message
+      } else if (data.message) {
+        message = data.message
+      } else if (raw) {
+        message = raw
+      }
+
+    } catch {
+      if (raw) {
+        message = raw
+      }
+    }
+
+  } catch {}
+
   throw new Error(`uazapi error: ${message}`)
 }
 
