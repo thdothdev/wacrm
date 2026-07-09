@@ -344,9 +344,15 @@ export async function sendTextMessage(
 
   const url = uazapiUrl('/send/text', baseUrl)
   const body: Record<string, unknown> = {
-    to,
-    text,
-  }
+  to,
+  text,
+}
+
+console.log('[UAZAPI REQUEST DEBUG]', {
+  url,
+  body,
+  hasToken: Boolean(instanceToken),
+})
 
   if (delay !== undefined) body.delay = delay
   if (replyid) body.replyid = replyid
