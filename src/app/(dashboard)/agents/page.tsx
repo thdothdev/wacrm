@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Bot, Sparkles, Settings2, BarChart3 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AiPlayground } from '@/components/agents/ai-playground';
 import { AiUsageCard } from '@/components/agents/ai-usage';
@@ -12,12 +13,12 @@ import { canEditSettings } from '@/lib/auth/roles';
 type Tab = 'playground' | 'setup' | 'usage';
 
 export default function AgentsPage() {
+  const t = useTranslations('AiAgents.page');
   const { accountRole } = useAuth();
   const canViewUsage = accountRole ? canEditSettings(accountRole) : false;
   const [tab, setTab] = useState<Tab>('playground');
   const [decided, setDecided] = useState(false);
 
-  // Land first-time users on Setup, returning users on the Playground.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -41,30 +42,23 @@ export default function AgentsPage() {
       <div className="flex items-center gap-2">
         <Bot className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          AI Agents
+          {t('title')}
         </h1>
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Your bring-your-own-key AI agent — set it up, then test it in the
-        playground before it replies to customers in the inbox.
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{t('description')}</p>
 
       {decided && (
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as Tab)}
-          className="mt-6"
-        >
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mt-6">
           <TabsList>
             <TabsTrigger value="playground">
-              <Sparkles className="mr-1.5 h-4 w-4" /> Playground
+              <Sparkles className="mr-1.5 h-4 w-4" /> {t('playground')}
             </TabsTrigger>
             <TabsTrigger value="setup">
-              <Settings2 className="mr-1.5 h-4 w-4" /> Setup
+              <Settings2 className="mr-1.5 h-4 w-4" /> {t('setup')}
             </TabsTrigger>
             {canViewUsage && (
               <TabsTrigger value="usage">
-                <BarChart3 className="mr-1.5 h-4 w-4" /> Usage
+                <BarChart3 className="mr-1.5 h-4 w-4" /> {t('usage')}
               </TabsTrigger>
             )}
           </TabsList>
@@ -72,11 +66,9 @@ export default function AgentsPage() {
           <TabsContent value="playground" className="mt-4">
             <AiPlayground onGoToSetup={() => setTab('setup')} />
           </TabsContent>
-
           <TabsContent value="setup" className="mt-4">
             <AiConfig />
           </TabsContent>
-
           {canViewUsage && (
             <TabsContent value="usage" className="mt-4">
               <AiUsageCard />
