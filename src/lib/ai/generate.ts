@@ -73,8 +73,20 @@ function looksLikeHandoffReply(text: string): boolean {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
 
+  const mentionsHandoffTarget = /\b(especialista|atendente|humano|equipe|consultor)\b/.test(normalized)
+  const mentionsHandoffAction = /\b(encaminh|transfer|direcion)\w*\b/.test(normalized)
+  if (!mentionsHandoffAction || !mentionsHandoffTarget) return false
+
+  const isQuestionOrOffer =
+    text.includes('?') ||
+    /\b(quer|deseja|gostaria|prefere|posso|podemos|devo)\b.{0,40}\b(encaminh|transfer|direcion)\w*/.test(normalized) ||
+    /\b(encaminh|transfer|direcion)\w*.{0,40}\b(quer|deseja|gostaria|prefere)\b/.test(normalized) ||
+    /\bse\s+(quiser|preferir)\b/.test(normalized)
+  if (isQuestionOrOffer) return false
+
   return (
-    /\b(encaminh|transfer|direcion)\w*\b/.test(normalized) &&
-    /\b(especialista|atendente|humano|equipe|consultor)\b/.test(normalized)
+    /\b(vou|irei|iremos|estou|estamos|ja|agora)\b.{0,40}\b(encaminh|transfer|direcion)\w*/.test(normalized) ||
+    /\b(encaminhei|encaminharei|encaminharemos|transferi|transferirei|transferiremos|direcionei|direcionarei|direcionaremos)\b/.test(normalized) ||
+    /\b(sera|serao|foi|foram)\b.{0,30}\b(encaminh|transfer|direcion)\w*/.test(normalized)
   )
 }
