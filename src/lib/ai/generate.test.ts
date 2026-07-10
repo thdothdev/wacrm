@@ -70,12 +70,14 @@ describe('parseGeneration', () => {
   })
 })
 
-describe('generateReply — OpenAI', () => {
-  it('calls the chat completions endpoint and returns the reply', async () => {
+describe('generateReply â€” OpenAI', () => {
+  it('calls the responses endpoint and returns the reply', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okResponse({
-        choices: [{ message: { content: 'Sure — happy to help!' } }],
-        usage: { prompt_tokens: 42, completion_tokens: 8, total_tokens: 50 },
+        output: [
+          { type: 'message', content: [{ type: 'output_text', text: 'Sure â€” happy to help!' }] },
+        ],
+        usage: { input_tokens: 42, output_tokens: 8, total_tokens: 50 },
       }),
     )
     vi.stubGlobal('fetch', fetchMock)
@@ -87,13 +89,16 @@ describe('generateReply — OpenAI', () => {
     })
 
     expect(res).toEqual({
-      text: 'Sure — happy to help!',
+      text: 'Sure â€” happy to help!',
       handoff: false,
       usage: { promptTokens: 42, completionTokens: 8, totalTokens: 50 },
     })
     const [url, opts] = fetchMock.mock.calls[0]
-    expect(url).toContain('api.openai.com')
+    expect(url).toContain('/v1/responses')
     expect(opts.headers.Authorization).toBe('Bearer sk-test')
+    const body = JSON.parse(opts.body)
+    expect(body.instructions).toBe('sys')
+    expect(body.input).toEqual([{ role: 'user', content: 'Hi' }])
   })
 
   it('maps a 401 to an invalid_key AiError', async () => {
@@ -116,7 +121,9 @@ describe('generateReply — OpenAI', () => {
   it('throws on an empty completion', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(okResponse({ choices: [{ message: { content: '' } }] })),
+      vi.fn().mockResolvedValue(
+        okResponse({ output: [{ type: 'message', content: [{ type: 'output_text', text: '' }] }] }),
+      ),
     )
     await expect(
       generateReply({
@@ -127,7 +134,6 @@ describe('generateReply — OpenAI', () => {
     ).rejects.toBeInstanceOf(AiError)
   })
 })
-
 describe('generateReply — Anthropic', () => {
   it('calls the messages endpoint with the version header and parses text blocks', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
