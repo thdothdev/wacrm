@@ -13,6 +13,7 @@ import {
   Zap,
   AlertTriangle,
   RotateCcw,
+  QrCode as QrCodeIcon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
@@ -70,6 +71,8 @@ export function WhatsAppConfig() {
   const [uazapiBaseUrl, setUazapiBaseUrl] = useState('');
   const [uazapiToken, setUazapiToken] = useState('');
   const [uazapiTokenEdited, setUazapiTokenEdited] = useState(false);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [uazapiQrCode, setUazapiQrCode] = useState<string | null>(null);
   const [verifyToken, setVerifyToken] = useState('');
   const [pin, setPin] = useState('');
   const [tokenEdited, setTokenEdited] = useState(false);
@@ -143,6 +146,7 @@ export function WhatsAppConfig() {
       }
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
+      setUazapiQrCode(null);
 
       // Then verify health via the API (decrypts token + pings Meta)
       if (data) {
@@ -231,6 +235,56 @@ export function WhatsAppConfig() {
       toast.error('Falha ao salvar uazapi');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleGenerateUazapiQr() {
+    if (!uazapiBaseUrl.trim()) {
+      toast.error('Informe a URL do servidor uazapi');
+      return;
+    }
+
+    const hasTypedToken = uazapiTokenEdited && uazapiToken.trim() && uazapiToken !== MASKED_TOKEN;
+    if (!config?.instance_token && !hasTypedToken) {
+      toast.error('Informe o token da instancia uazapi');
+      return;
+    }
+
+    try {
+      setQrLoading(true);
+      setUazapiQrCode(null);
+      const res = await fetch('/api/whatsapp/config/uazapi-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          baseUrl: uazapiBaseUrl.trim(),
+          instanceToken: hasTypedToken ? uazapiToken.trim() : undefined,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Falha ao gerar QR Code da uazapi');
+        return;
+      }
+
+      if (data.connected && !data.qrcode) {
+        toast.success('Instancia uazapi ja esta conectada');
+        return;
+      }
+
+      if (!data.qrcode) {
+        toast.error('A uazapi nao retornou um QR Code para esta instancia');
+        return;
+      }
+
+      setUazapiQrCode(data.qrcode);
+      toast.success('QR Code gerado. Escaneie pelo WhatsApp.');
+    } catch (err) {
+      console.error('uazapi QR error:', err);
+      toast.error('Falha ao gerar QR Code da uazapi');
+    } finally {
+      setQrLoading(false);
     }
   }
 
@@ -408,6 +462,7 @@ export function WhatsAppConfig() {
       setUazapiBaseUrl('');
       setUazapiToken('');
       setUazapiTokenEdited(false);
+      setUazapiQrCode(null);
       setVerifyToken('');
       setTokenEdited(false);
       setConnectionStatus('disconnected');
@@ -636,7 +691,10 @@ export function WhatsAppConfig() {
               <Input
                 placeholder="https://sua-instancia.uazapi.com"
                 value={uazapiBaseUrl}
-                onChange={(e) => setUazapiBaseUrl(e.target.value)}
+                onChange={(e) => {
+                  setUazapiBaseUrl(e.target.value);
+                  setUazapiQrCode(null);
+                }}
                 className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
               />
             </div>
@@ -651,11 +709,13 @@ export function WhatsAppConfig() {
                   onChange={(e) => {
                     setUazapiToken(e.target.value);
                     setUazapiTokenEdited(true);
+                    setUazapiQrCode(null);
                   }}
                   onFocus={() => {
                     if (uazapiToken === MASKED_TOKEN) {
                       setUazapiToken('');
                       setUazapiTokenEdited(true);
+                      setUazapiQrCode(null);
                     }
                   }}
                   className="bg-muted border-border text-foreground placeholder:text-muted-foreground pr-10"
@@ -673,20 +733,51 @@ export function WhatsAppConfig() {
               )}
             </div>
 
-            <Button
-              onClick={handleSaveUazapi}
-              disabled={saving}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              {saving ? (
-                <>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleSaveUazapi}
+                disabled={saving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Conectando...
+                  </>
+                ) : (
+                  config?.instance_token ? 'Salvar UAZAPI' : 'Conectar'
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGenerateUazapiQr}
+                disabled={qrLoading || saving}
+                className="border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                {qrLoading ? (
                   <Loader2 className="size-4 animate-spin" />
-                  Conectando...
-                </>
-              ) : (
-                config?.instance_token ? 'Salvar UAZAPI' : 'Conectar'
-              )}
-            </Button>
+                ) : (
+                  <QrCodeIcon className="size-4" />
+                )}
+                {uazapiQrCode ? 'Atualizar QR Code' : 'Gerar QR Code'}
+              </Button>
+            </div>
+
+            {uazapiQrCode && (
+              <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <img
+                    src={uazapiQrCode}
+                    alt="QR Code UAZAPI para conectar WhatsApp"
+                    className="size-56 rounded-md border border-border bg-white p-2"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Abra o WhatsApp no celular, toque em Aparelhos conectados e escaneie este QR Code.
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
         )}

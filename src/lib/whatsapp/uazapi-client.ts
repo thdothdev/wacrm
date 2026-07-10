@@ -192,6 +192,98 @@ export interface GetInstanceStatusResult {
   lastActivity?: string
 }
 
+export interface GetInstanceQrCodeArgs {
+  baseUrl?: string
+  instanceToken: string
+}
+
+export interface GetInstanceQrCodeResult {
+  qrcode?: string
+  state?: InstanceState
+  connected?: boolean
+  message?: string
+}
+
+export function normalizeQrCodeForDisplay(value?: string): string | undefined {
+  const qr = value?.trim()
+  if (!qr) return undefined
+  if (qr.startsWith('data:image/') || qr.startsWith('http://') || qr.startsWith('https://')) {
+    return qr
+  }
+  if (/^[A-Za-z0-9+/=\r\n]+$/.test(qr) && qr.replace(/\s/g, '').length > 80) {
+    return `data:image/png;base64,${qr.replace(/\s/g, '')}`
+  }
+  return qr
+}
+
+function pickQrCode(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const record = value as Record<string, unknown>
+  for (const key of ['qrcode', 'qr_code', 'qr', 'QRCode', 'code']) {
+    if (typeof record[key] === 'string') return record[key] as string
+  }
+  for (const key of ['data', 'instance', 'result']) {
+    const nested = pickQrCode(record[key])
+    if (nested) return nested
+  }
+  return undefined
+}
+
+/**
+ * Request a QR code for an existing UAZAPI instance token.
+ * Different UAZAPI deployments expose this with slightly different paths,
+ * so we try the known variants and return the first QR-like payload.
+ */
+export async function getInstanceQrCode(
+  args: GetInstanceQrCodeArgs
+): Promise<GetInstanceQrCodeResult> {
+  const { baseUrl, instanceToken } = args
+  const attempts: Array<{ path: string; method: 'GET' | 'POST' }> = [
+    { path: '/instance/connect', method: 'POST' },
+    { path: '/instance/qrcode', method: 'GET' },
+    { path: '/instance/qr', method: 'GET' },
+    { path: '/instance/qrcode', method: 'POST' },
+  ]
+  let lastResponse: Response | null = null
+
+  for (const attempt of attempts) {
+    const response = await fetch(uazapiUrl(attempt.path, baseUrl), {
+      method: attempt.method,
+      headers: {
+        'Content-Type': 'application/json',
+        token: instanceToken,
+      },
+      body: attempt.method === 'POST' ? '{}' : undefined,
+    })
+
+    if (!response.ok) {
+      lastResponse = response
+      if (response.status === 404 || response.status === 405) continue
+      continue
+    }
+
+    const data = (await response.json()) as Record<string, unknown>
+    const qrcode = normalizeQrCodeForDisplay(pickQrCode(data))
+    const state = data.state as InstanceState | undefined
+    const connected = data.connected as boolean | undefined
+
+    if (qrcode || connected) {
+      return {
+        qrcode,
+        state,
+        connected,
+        message: typeof data.message === 'string' ? data.message : undefined,
+      }
+    }
+  }
+
+  if (lastResponse) {
+    await throwUazapiError(lastResponse, `Failed to get instance QR code: ${lastResponse.status}`)
+  }
+
+  throw new Error('uazapi did not return a QR code')
+}
+
 /**
  * Check the current status of a WhatsApp instance.
  */
