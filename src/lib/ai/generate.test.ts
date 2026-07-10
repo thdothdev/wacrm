@@ -60,6 +60,10 @@ describe('parseGeneration', () => {
     })
   })
 
+  it('detects natural handoff wording', () => {
+    const text = 'Vou encaminhar suas informações para um especialista da nossa equipe.'
+    expect(parseGeneration(text)).toEqual({ text, handoff: true, usage: null })
+  })
   it('passes usage straight through', () => {
     const usage = { promptTokens: 10, completionTokens: 5, totalTokens: 15 }
     expect(parseGeneration('Hi', usage)).toEqual({

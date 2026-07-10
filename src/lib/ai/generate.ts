@@ -62,7 +62,19 @@ export function parseGeneration(
   raw: string,
   usage: AiUsage | null = null,
 ): GenerateResult {
-  const handoff = raw.includes(HANDOFF_SENTINEL)
   const text = raw.split(HANDOFF_SENTINEL).join('').trim()
+  const handoff = raw.includes(HANDOFF_SENTINEL) || looksLikeHandoffReply(text)
   return { text, handoff, usage }
+}
+
+function looksLikeHandoffReply(text: string): boolean {
+  const normalized = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  return (
+    /\b(encaminh|transfer|direcion)\w*\b/.test(normalized) &&
+    /\b(especialista|atendente|humano|equipe|consultor)\b/.test(normalized)
+  )
 }
