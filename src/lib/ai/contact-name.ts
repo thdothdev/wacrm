@@ -28,6 +28,7 @@ const NOT_NAMES = new Set([
   'ola',
   'posso',
   'sim',
+  'sou',
   'tudo',
   'vamos',
   'voce',
@@ -145,6 +146,7 @@ function hasRealName(name: string | null | undefined, phone: string | null | und
   if (nameDigits.length >= 7) return false
   if (phoneDigits && nameDigits === phoneDigits) return false
   if (trimmed.includes('@s.whatsapp.net')) return false
+  if (normalizeWord(trimmed.split(' ')[0]) === 'sou') return false
 
   return true
 }

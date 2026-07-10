@@ -10,6 +10,7 @@ describe('extractCustomerNameFromAiReply', () => {
   it('ignores generic greetings without a real name', () => {
     expect(extractCustomerNameFromAiReply('Oi! Tudo bem?')).toBeNull()
     expect(extractCustomerNameFromAiReply('Ol\u00e1, tudo bem? Posso ajudar?')).toBeNull()
+    expect(extractCustomerNameFromAiReply('Bom dia! Sou a Lumi, assistente virtual.')).toBeNull()
     expect(extractCustomerNameFromAiReply('Ol\u00e1, 558181587312!')).toBeNull()
   })
 })
