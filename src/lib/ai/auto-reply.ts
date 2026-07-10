@@ -7,6 +7,7 @@ import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
+import { maybeUpdateContactNameFromAiReply } from './contact-name'
 import { engineSendText } from '@/lib/flows/meta-send'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
@@ -214,6 +215,12 @@ export async function dispatchInboundToAiReply(
       contactId,
       text,
       aiGenerated: true,
+    })
+
+    await maybeUpdateContactNameFromAiReply(db, {
+      accountId,
+      contactId,
+      replyText: text,
     })
   } catch (err) {
     console.error('[ai auto-reply] dispatch failed:', err)
