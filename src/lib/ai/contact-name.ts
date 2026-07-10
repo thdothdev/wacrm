@@ -1,13 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const NAME_WORD = String.raw`\p{L}[\p{L}'-]*`
+const CUSTOMER_NAME_PATTERNS = [
+  new RegExp(
+    String.raw`(?:meu nome\s+\p{L}+|me chamo|sou (?:o|a)?\s*)\s*(${NAME_WORD}(?:\s+${NAME_WORD}){0,2})(?=[,!.?]|$)`,
+    'iu',
+  ),
+]
+
 const NAME_STARTERS = [
   new RegExp(
     String.raw`^(?:ol[a\u00e1]|oi|bom dia|boa tarde|boa noite|hello|hi|hey)[,!\.\s]+(${NAME_WORD}(?:\s+${NAME_WORD}){0,2})(?=[,!.?]|$)`,
     'iu',
   ),
   new RegExp(
-    String.raw`^(?:perfeito|claro|certo|combinado|obrigad[oa])[,!\.\s]+(${NAME_WORD}(?:\s+${NAME_WORD}){0,2})(?=[,!.?]|$)`,
+    String.raw`^(?:prazer|perfeito|claro|certo|combinado|obrigad[oa])[,!\.\s]+(${NAME_WORD}(?:\s+${NAME_WORD}){0,2})(?=[,!.?]|$)`,
     'iu',
   ),
 ]
@@ -39,7 +46,8 @@ const NOT_NAMES = new Set([
 interface LearnedNameArgs {
   accountId: string
   contactId: string
-  replyText: string
+  replyText?: string
+  inboundText?: string
 }
 
 interface ContactRow {
@@ -51,6 +59,19 @@ interface ContactRow {
 interface DealRow {
   id: string
   title: string | null
+}
+
+export function extractCustomerNameFromCustomerMessage(text: string): string | null {
+  const firstLine = text.trim().split(/\r?\n/, 1)[0]?.trim() ?? ''
+  if (!firstLine) return null
+
+  for (const pattern of CUSTOMER_NAME_PATTERNS) {
+    const match = firstLine.match(pattern)
+    const cleaned = cleanName(match?.[1])
+    if (cleaned) return cleaned
+  }
+
+  return null
 }
 
 export function extractCustomerNameFromAiReply(text: string): string | null {
@@ -70,7 +91,9 @@ export async function maybeUpdateContactNameFromAiReply(
   db: SupabaseClient,
   args: LearnedNameArgs,
 ): Promise<void> {
-  const learnedName = extractCustomerNameFromAiReply(args.replyText)
+  const learnedName =
+    (args.inboundText ? extractCustomerNameFromCustomerMessage(args.inboundText) : null) ??
+    (args.replyText ? extractCustomerNameFromAiReply(args.replyText) : null)
   if (!learnedName) return
 
   try {

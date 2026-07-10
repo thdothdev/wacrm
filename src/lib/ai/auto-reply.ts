@@ -124,12 +124,14 @@ export async function dispatchInboundToAiReply(
       return
     }
 
+    const inboundText = latestUserMessage(messages)
+
     // Ground the reply in the account's knowledge base (best-effort).
     const knowledge = await retrieveKnowledge(
       db,
       accountId,
       config,
-      latestUserMessage(messages),
+      inboundText,
     )
 
     const systemPrompt = buildSystemPrompt({
@@ -220,6 +222,7 @@ export async function dispatchInboundToAiReply(
     await maybeUpdateContactNameFromAiReply(db, {
       accountId,
       contactId,
+      inboundText,
       replyText: text,
     })
   } catch (err) {
