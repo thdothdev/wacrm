@@ -253,13 +253,35 @@ export function WhatsAppConfig() {
     try {
       setQrLoading(true);
       setUazapiQrCode(null);
+
+      if (hasTypedToken) {
+        const saveRes = await fetch('/api/whatsapp/config/connect-uazapi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            baseUrl: uazapiBaseUrl.trim(),
+            instanceToken: uazapiToken.trim(),
+          }),
+        });
+        const saveData = await saveRes.json();
+        if (!saveRes.ok) {
+          toast.error(saveData.error || 'Falha ao salvar credenciais da uazapi');
+          return;
+        }
+        setUazapiToken(MASKED_TOKEN);
+        setUazapiTokenEdited(false);
+        if (saveData.connected) {
+          setConnectionStatus('connected');
+          toast.success('uazapi conectado');
+          if (accountId) await fetchConfig(accountId);
+          return;
+        }
+      }
+
       const res = await fetch('/api/whatsapp/config/uazapi-qr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          baseUrl: uazapiBaseUrl.trim(),
-          instanceToken: hasTypedToken ? uazapiToken.trim() : undefined,
-        }),
+        body: JSON.stringify({ baseUrl: uazapiBaseUrl.trim() }),
       });
       const data = await res.json();
 
@@ -269,7 +291,9 @@ export function WhatsAppConfig() {
       }
 
       if (data.connected && !data.qrcode) {
+        setConnectionStatus('connected');
         toast.success('Instancia uazapi ja esta conectada');
+        if (accountId) await fetchConfig(accountId);
         return;
       }
 
@@ -497,6 +521,11 @@ export function WhatsAppConfig() {
 
   const showResetBanner = resetReason === 'token_corrupted';
   const isUazapiMode = Boolean(config?.instance_token);
+  const isUazapiConnected = isUazapiMode && (
+    connectionStatus === 'connected' ||
+    config?.status === 'connected' ||
+    config?.connection_state === 'connected'
+  );
 
   return (
     <section className="animate-in fade-in-50 duration-200">
@@ -686,6 +715,16 @@ export function WhatsAppConfig() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isUazapiConnected && (
+              <Alert className="border-emerald-700/50 bg-emerald-950/30">
+                <CheckCircle2 className="size-4 text-emerald-400" />
+                <AlertTitle className="text-emerald-200">UAZAPI conectado</AlertTitle>
+                <AlertDescription className="text-emerald-100/80">
+                  Esta instancia ja esta conectada. As mensagens entram e saem pela UAZAPI ativa.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-2">
               <Label className="text-muted-foreground">Server URL</Label>
               <Input
@@ -764,7 +803,7 @@ export function WhatsAppConfig() {
               </Button>
             </div>
 
-            {uazapiQrCode && (
+            {!isUazapiConnected && uazapiQrCode && (
               <div className="rounded-lg border border-border bg-muted/40 p-4">
                 <div className="flex flex-col items-center gap-3 text-center">
                   <img
