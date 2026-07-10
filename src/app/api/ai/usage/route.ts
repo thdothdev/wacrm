@@ -51,15 +51,25 @@ export async function GET(request: Request) {
     // chart (see lib/dashboard/date-utils).
     const since = daysAgoStart(days - 1)
 
-    const { data, error } = await supabase
-      .from('ai_usage_log')
-      .select(
-        'created_at, mode, provider, model, prompt_tokens, completion_tokens, total_tokens',
-      )
-      .eq('account_id', accountId)
-      .gte('created_at', since.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(MAX_ROWS + 1)
+    const [usageRes, conversationsRes] = await Promise.all([
+      supabase
+        .from('ai_usage_log')
+        .select(
+          'created_at, mode, provider, model, prompt_tokens, completion_tokens, total_tokens',
+        )
+        .eq('account_id', accountId)
+        .gte('created_at', since.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(MAX_ROWS + 1),
+      supabase
+        .from('conversations')
+        .select('id, ai_autoreply_disabled, ai_handoff_summary, ai_reply_count')
+        .eq('account_id', accountId)
+        .gte('updated_at', since.toISOString())
+        .limit(MAX_ROWS + 1),
+    ])
+
+    const { data, error } = usageRes
 
     if (error) {
       console.error('[ai/usage GET] fetch error:', error)
@@ -68,6 +78,19 @@ export async function GET(request: Request) {
         { status: 500 },
       )
     }
+
+    if (conversationsRes.error) {
+      console.warn('[ai/usage GET] conversations report skipped:', conversationsRes.error)
+    }
+
+    const conversationRows = (conversationsRes.data ?? []) as Array<{
+      id: string
+      ai_autoreply_disabled: boolean | null
+      ai_handoff_summary: string | null
+      ai_reply_count: number | null
+    }>
+    const aiConversations = conversationRows.filter((row) => (row.ai_reply_count ?? 0) > 0 || Boolean(row.ai_handoff_summary)).length
+    const handoffs = conversationRows.filter((row) => row.ai_autoreply_disabled && Boolean(row.ai_handoff_summary)).length
 
     const all = (data ?? []) as UsageRow[]
     const truncated = all.length > MAX_ROWS
@@ -134,6 +157,10 @@ export async function GET(request: Request) {
       by_mode: byMode,
       by_model: byModel,
       daily: [...daily.values()],
+      report: {
+        ai_conversations: aiConversations,
+        handoffs,
+      },
     })
   } catch (err) {
     return toErrorResponse(err)

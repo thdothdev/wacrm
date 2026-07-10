@@ -20,6 +20,7 @@ interface UsageResponse {
   by_mode: { auto_reply: { calls: number; tokens: number }; draft: { calls: number; tokens: number } };
   by_model: { model: string; provider: string; calls: number; tokens: number }[];
   daily: { date: string; tokens: number; calls: number }[];
+  report?: { ai_conversations: number; handoffs: number };
 }
 
 const WINDOWS = [7, 30, 90] as const;
@@ -96,11 +97,13 @@ export function AiUsageCard() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <Stat label={t('totalTokens')} value={formatCompactNumber(data.totals.total_tokens)} />
               <Stat label={t('llmCalls')} value={String(data.totals.calls)} />
               <Stat label={t('autoReply')} value={formatCompactNumber(data.by_mode.auto_reply.tokens)} icon={Bot} />
               <Stat label={t('drafts')} value={formatCompactNumber(data.by_mode.draft.tokens)} icon={PencilLine} />
+              <Stat label={t('handoffs')} value={String(data.report?.handoffs ?? 0)} />
+              <Stat label={t('aiConversations')} value={String(data.report?.ai_conversations ?? 0)} />
             </div>
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">{t('tokensPerDay')}</p>

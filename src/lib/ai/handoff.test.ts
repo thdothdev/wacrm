@@ -1,48 +1,48 @@
-import { describe, it, expect } from 'vitest'
-import { buildHandoffSummary } from './handoff'
+﻿import { describe, it, expect } from 'vitest'
+import { buildHandoffSummary, inferHandoffReason } from './handoff'
 
 describe('buildHandoffSummary', () => {
-  it('notes the reply count and quotes the last customer message', () => {
+  it('notes the reply count, reason, and quotes the last customer message', () => {
     const summary = buildHandoffSummary({
       messages: [
-        { role: 'user', content: 'Hi' },
-        { role: 'assistant', content: 'Hello! How can I help?' },
-        { role: 'user', content: 'I want a refund' },
+        { role: 'user', content: 'Oi' },
+        { role: 'assistant', content: 'Ola! Como posso ajudar?' },
+        { role: 'user', content: 'Quero falar com um atendente' },
       ],
       replyCount: 2,
     })
     expect(summary).toBe(
-      '🤖 AI agent handed off after 2 replies. Last customer message: “I want a refund”',
+      'IA encaminhou para humano apos 2 respostas. Motivo: cliente pediu atendimento humano. Ultima mensagem do cliente: "Quero falar com um atendente"',
     )
   })
 
-  it('uses the singular "reply" for a count of one', () => {
+  it('uses the singular reply label for a count of one', () => {
     const summary = buildHandoffSummary({
-      messages: [{ role: 'user', content: 'help' }],
+      messages: [{ role: 'user', content: 'preciso de preco' }],
       replyCount: 1,
     })
-    expect(summary).toContain('after 1 reply.')
+    expect(summary).toContain('apos 1 resposta.')
   })
 
-  it('says "without replying" when the bot bailed on the first inbound', () => {
+  it('says it did not auto-reply when the bot bailed on the first inbound', () => {
     const summary = buildHandoffSummary({
       messages: [{ role: 'user', content: 'agent please' }],
       replyCount: 0,
     })
-    expect(summary).toContain('handed off without replying.')
-    expect(summary).toContain('“agent please”')
+    expect(summary).toContain('sem responder automaticamente.')
+    expect(summary).toContain('"agent please"')
   })
 
   it('picks the most recent customer turn, ignoring assistant turns', () => {
     const summary = buildHandoffSummary({
       messages: [
-        { role: 'user', content: 'first' },
-        { role: 'user', content: 'second' },
-        { role: 'assistant', content: 'a reply' },
+        { role: 'user', content: 'primeira' },
+        { role: 'user', content: 'segunda' },
+        { role: 'assistant', content: 'uma resposta' },
       ],
       replyCount: 1,
     })
-    expect(summary).toContain('“second”')
+    expect(summary).toContain('"segunda"')
   })
 
   it('collapses whitespace and truncates a long message', () => {
@@ -51,9 +51,8 @@ describe('buildHandoffSummary', () => {
       messages: [{ role: 'user', content: long }],
       replyCount: 0,
     })
-    expect(summary).toContain('…')
-    // 160-char cap on the quote; the whole note stays well under 250.
-    expect(summary.length).toBeLessThan(250)
+    expect(summary).toContain('...')
+    expect(summary.length).toBeLessThan(300)
   })
 
   it('degrades gracefully when there is no customer message', () => {
@@ -61,6 +60,16 @@ describe('buildHandoffSummary', () => {
       messages: [{ role: 'assistant', content: 'greeting' }],
       replyCount: 0,
     })
-    expect(summary).toBe('🤖 AI agent handed off without replying.')
+    expect(summary).toBe(
+      'IA encaminhou para humano sem responder automaticamente. Motivo: IA nao tinha informacao suficiente.',
+    )
+  })
+})
+
+describe('inferHandoffReason', () => {
+  it('classifies human requests, frustration, and commercial review', () => {
+    expect(inferHandoffReason([{ role: 'user', content: 'quero falar com humano' }])).toBe('human_requested')
+    expect(inferHandoffReason([{ role: 'user', content: 'isso e urgente, estou insatisfeito' }])).toBe('customer_frustrated')
+    expect(inferHandoffReason([{ role: 'user', content: 'preciso de uma proposta' }])).toBe('needs_business_review')
   })
 })

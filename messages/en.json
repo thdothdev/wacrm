@@ -268,10 +268,11 @@
       "activeText": "AI assistant is replying automatically",
       "takeOver": "Take over",
       "resume": "Resume AI",
-      "tookOver": "You’ve taken over this chat.",
+      "tookOver": "You took over this chat.",
       "resumed": "AI resumed.",
       "updateError": "Couldn’t update the AI assistant.",
-      "networkError": "Couldn’t reach the server."
+      "networkError": "Couldn’t reach the server.",
+      "handoffReason": "Reason: {reason}"
     }
   },
   "Contacts": {
@@ -316,7 +317,8 @@
       "toastFailedDelete": "Failed to delete contact",
       "toastDeleted": "Contact deleted",
       "toastBulkFailedDelete": "Failed to delete contacts",
-      "toastBulkDeleted": "{count} contacts deleted"
+      "toastBulkDeleted": "{count} contacts deleted",
+      "aiLearnedName": "Name learned by AI"
     },
     "form": {
       "addTitle": "Add Contact",
@@ -1687,7 +1689,12 @@
       "saveSuccess": "AI assistant saved.",
       "saveFailed": "Failed to save.",
       "removeSuccess": "AI configuration removed.",
-      "removeFailed": "Failed to remove."
+      "removeFailed": "Failed to remove.",
+      "promptTemplates": {
+        "sales": "Sales assistant",
+        "support": "Support assistant",
+        "qualification": "Lead qualification"
+      }
     },
     "aiKnowledge": {
       "loadFailed": "Failed to load knowledge base",
@@ -1790,7 +1797,10 @@
       "byModel": "By model",
       "call": "call",
       "calls": "calls",
-      "truncated": "Showing a partial window - usage is high enough that only the most recent records are summarized here."
+      "truncated": "Showing a partial window - usage is high enough that only the most recent records are summarized here.",
+      "handoffs": "Handoffs",
+      "aiConversations": "AI conversations",
+      "reportTitle": "AI activity"
     }
   }
 }

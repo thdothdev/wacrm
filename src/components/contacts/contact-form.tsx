@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -32,7 +32,7 @@ interface ContactFormProps {
   contact?: Contact | null;
   contactTags?: ContactTag[];
   onSaved: () => void;
-  /** Open an existing contact's detail view — used by the duplicate
+  /** Open an existing contact's detail view â€” used by the duplicate
    *  notice to jump to the contact that already owns this number. */
   onViewExisting?: (contactId: string) => void;
 }
@@ -58,7 +58,7 @@ export function ContactForm({
 
   // Duplicate-phone detection for NEW contacts. `exact` (same digits)
   // hard-blocks the save; a fuzzy trunk-variant match only warns. The
-  // DB unique index (migration 022) is the real backstop — this is the
+  // DB unique index (migration 022) is the real backstop â€” this is the
   // friendly heads-up before we get there.
   const [dupMatch, setDupMatch] = useState<
     { contact: ExistingContact; exact: boolean } | null
@@ -153,6 +153,7 @@ export function ContactForm({
           .from('contacts')
           .update({
             name: name.trim() || null,
+            name_source: name.trim() ? 'manual' : null,
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
@@ -167,6 +168,7 @@ export function ContactForm({
             user_id: user.id,
             account_id: accountId,
             name: name.trim() || null,
+            name_source: name.trim() ? 'manual' : null,
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
@@ -388,3 +390,4 @@ export function ContactForm({
     </Dialog>
   );
 }
+

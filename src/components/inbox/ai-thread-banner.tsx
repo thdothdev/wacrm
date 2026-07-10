@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Sparkles, Hand, Undo2, Loader2 } from "lucide-react";
@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 //
 // Keyed by accountId (a multi-account user switching workspaces must not
 // see the previous account's status), and only *successful* fetches are
-// cached — a transient failure returns a default without poisoning the
+// cached â€” a transient failure returns a default without poisoning the
 // cache, so it retries on the next thread open rather than hiding the
 // banner for the whole session.
 // ------------------------------------------------------------
@@ -44,14 +44,15 @@ async function fetchAiAccountStatus(accountId: string): Promise<AiAccountStatus>
 
 interface AiThreadBannerProps {
   conversationId: string;
-  /** `conversations.ai_autoreply_disabled` — bot paused on this thread. */
+  /** `conversations.ai_autoreply_disabled` â€” bot paused on this thread. */
   disabled: boolean;
-  /** `conversations.ai_handoff_summary` — note the bot left on handoff. */
+  /** `conversations.ai_handoff_summary` â€” note the bot left on handoff. */
   handoffSummary?: string | null;
+  handoffReason?: string | null;
   /** Current assignee; when a human owns the thread the bot won't run,
    *  so the "AI active" banner is suppressed. */
   assignedAgentId?: string | null;
-  /** The acting agent — "Take over" assigns the thread to them. */
+  /** The acting agent â€” "Take over" assigns the thread to them. */
   currentUserId?: string | null;
   /** Called after a successful toggle so the parent can patch its local
    *  conversation state (the realtime UPDATE also arrives, but this keeps
@@ -65,8 +66,8 @@ interface AiThreadBannerProps {
 /**
  * Inbox banner that surfaces + controls the AI auto-reply bot per
  * conversation:
- *   - bot active here → "AI is replying automatically" + [Take over]
- *   - bot paused here → the handoff note (if any) + [Resume AI]
+ *   - bot active here â†’ "AI is replying automatically" + [Take over]
+ *   - bot paused here â†’ the handoff note (if any) + [Resume AI]
  * Renders nothing when the account has no auto-reply configured, or when
  * the bot is active but a human already owns the thread (nothing to do).
  */
@@ -74,6 +75,7 @@ export function AiThreadBanner({
   conversationId,
   disabled,
   handoffSummary,
+  handoffReason,
   assignedAgentId,
   currentUserId,
   onChange,
@@ -134,7 +136,7 @@ export function AiThreadBanner({
     [conversationId, currentUserId, onChange, t],
   );
 
-  // Account has no auto-reply → nothing to show. (Still loading → nothing.)
+  // Account has no auto-reply â†’ nothing to show. (Still loading â†’ nothing.)
   if (!autoReplyOn) return null;
 
   // Paused here (a human took over, or the model handed off).
@@ -156,7 +158,7 @@ export function AiThreadBanner({
     );
   }
 
-  // Active, but a human already owns it → the bot won't fire; no banner.
+  // Active, but a human already owns it â†’ the bot won't fire; no banner.
   if (assignedAgentId) return null;
 
   // Active on this thread.
@@ -223,3 +225,19 @@ function BannerButton({
     </button>
   );
 }
+
+function humanReason(reason: string): string {
+  switch (reason) {
+    case 'human_requested':
+      return 'cliente pediu atendimento humano';
+    case 'customer_frustrated':
+      return 'cliente demonstrou insatisfacao ou urgencia';
+    case 'needs_business_review':
+      return 'precisa de avaliacao comercial';
+    case 'missing_information':
+      return 'IA nao tinha informacao suficiente';
+    default:
+      return reason;
+  }
+}
+

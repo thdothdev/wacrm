@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+﻿import type { SupabaseClient } from '@supabase/supabase-js'
 
 const NAME_WORD = String.raw`\p{L}[\p{L}'-]*`
 const CUSTOMER_NAME_PATTERNS = [
@@ -109,7 +109,7 @@ export async function maybeUpdateContactNameFromAiReply(
 
     const { error: updateError } = await db
       .from('contacts')
-      .update({ name: learnedName })
+      .update({ name: learnedName, name_source: 'ai' })
       .eq('account_id', args.accountId)
       .eq('id', args.contactId)
 

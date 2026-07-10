@@ -268,10 +268,11 @@
       "activeText": "Assistente de IA respondendo automaticamente",
       "takeOver": "Assumir conversa",
       "resume": "Retomar IA",
-      "tookOver": "Voce’ve taken over este chat.",
+      "tookOver": "Voce assumiu esta conversa.",
       "resumed": "IA retomada.",
       "updateError": "Nao foi possivel atualizar o assistente de IA.",
-      "networkError": "Nao foi possivel acessar o servidor."
+      "networkError": "Nao foi possivel acessar o servidor.",
+      "handoffReason": "Motivo: {reason}"
     }
   },
   "Contacts": {
@@ -316,7 +317,8 @@
       "toastFailedDelete": "Falha ao excluir contato",
       "toastDeleted": "Contato excluido",
       "toastBulkFailedDelete": "Falha ao excluir contatos",
-      "toastBulkDeleted": "{count} contatos excluidos"
+      "toastBulkDeleted": "{count} contatos excluidos",
+      "aiLearnedName": "Nome aprendido pela IA"
     },
     "form": {
       "addTitle": "Adicionar contato",
@@ -1688,7 +1690,12 @@
       "saveSuccess": "Assistente de IA salvo.",
       "saveFailed": "Falha ao salvar.",
       "removeSuccess": "IA configuracao removed.",
-      "removeFailed": "Falha ao remove."
+      "removeFailed": "Falha ao remove.",
+      "promptTemplates": {
+        "sales": "Atendimento comercial",
+        "support": "Suporte",
+        "qualification": "Qualificacao de leads"
+      }
     },
     "aiKnowledge": {
       "loadFailed": "Falha ao carregar base de conhecimento",
@@ -1791,7 +1798,10 @@
       "byModel": "Por modelo",
       "call": "chamada",
       "calls": "chamadas",
-      "truncated": "Mostrando uma janela parcial - o uso e alto o bastante para resumir apenas os registros mais recentes."
+      "truncated": "Mostrando uma janela parcial - o uso e alto o bastante para resumir apenas os registros mais recentes.",
+      "handoffs": "Encaminhamentos",
+      "aiConversations": "Conversas com IA",
+      "reportTitle": "Atividade da IA"
     }
   }
 }

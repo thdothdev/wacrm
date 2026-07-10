@@ -48,6 +48,21 @@ const KEY_PLACEHOLDER: Record<AiProvider, string> = {
   anthropic: 'sk-ant-...',
 };
 
+const PROMPT_TEMPLATES = [
+  {
+    key: 'sales',
+    body: 'Voce e uma assistente comercial. Cumprimente o cliente, pergunte o nome no inicio se ainda nao souber, entenda objetivo, volume, prazo e contexto atual. Responda com clareza, faca uma pergunta por vez e encaminhe para humano quando houver pedido comercial, proposta, preco, reuniao ou decisao que precise da equipe.',
+  },
+  {
+    key: 'support',
+    body: 'Voce e uma assistente de suporte. Cumprimente o cliente, pergunte o nome no inicio se ainda nao souber, investigue o problema com perguntas objetivas e ofereca passos seguros. Encaminhe para humano quando faltar informacao, houver erro critico, urgencia, reclamacao ou risco de insatisfacao.',
+  },
+  {
+    key: 'qualification',
+    body: 'Voce e uma assistente de qualificacao de leads. Cumprimente o cliente, pergunte o nome no inicio se ainda nao souber, colete empresa, objetivo, quantidade de atendentes, volume de mensagens e se ja usa CRM ou automacao. Depois de coletar dados suficientes, avise que vai encaminhar para um especialista humano e faca o handoff.',
+  },
+] as const
+
 export function AiConfig() {
   const { accountId, accountRole, profileLoading } = useAuth();
   const canEdit = accountRole ? canEditSettings(accountRole) : false;
@@ -399,6 +414,20 @@ export function AiConfig() {
                 rows={5}
                 disabled={disabled}
               />
+              <div className="flex flex-wrap gap-2">
+                {PROMPT_TEMPLATES.map((template) => (
+                  <Button
+                    key={template.key}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => setSystemPrompt(template.body)}
+                  >
+                    {t(`promptTemplates.${template.key}`)}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-4 rounded-md border border-border p-3">

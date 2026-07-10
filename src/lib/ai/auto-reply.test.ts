@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AiConfig } from './types'
 
 // Shared, hoisted mock state so the module mocks can close over it.
@@ -26,7 +26,7 @@ vi.mock('./admin-client', () => ({
   supabaseAdmin: () => ({
     from: (table: string) => {
       if (table === 'automations') {
-        // .select().eq().eq().in().limit() → active auto-responders
+        // .select().eq().eq().in().limit() â†’ active auto-responders
         const chain = {
           select: () => chain,
           eq: () => chain,
@@ -98,7 +98,7 @@ beforeEach(() => {
   h.engineSendText.mockResolvedValue({ whatsapp_message_id: 'm1' })
 })
 
-describe('dispatchInboundToAiReply — eligibility gates', () => {
+describe('dispatchInboundToAiReply â€” eligibility gates', () => {
   it('claims a slot and sends on the happy path', async () => {
     await dispatchInboundToAiReply(ARGS)
     expect(h.state.rpcCalls).toEqual([
@@ -186,7 +186,7 @@ describe('dispatchInboundToAiReply — eligibility gates', () => {
   })
 })
 
-describe('dispatchInboundToAiReply — handoff', () => {
+describe('dispatchInboundToAiReply â€” handoff', () => {
   it('disables auto-reply, writes a summary, and does not send on handoff', async () => {
     h.generateReply.mockResolvedValue({ text: '', handoff: true })
     await dispatchInboundToAiReply(ARGS)
@@ -194,9 +194,10 @@ describe('dispatchInboundToAiReply — handoff', () => {
     expect(h.state.rpcCalls).toHaveLength(0)
     expect(h.state.updatePayload).toMatchObject({ ai_autoreply_disabled: true })
     expect(h.state.updatePayload?.ai_handoff_summary).toContain(
-      'AI agent handed off',
+      'IA encaminhou para humano',
     )
-    // No handoff target configured → conversation left unassigned.
+    expect(h.state.updatePayload?.ai_handoff_reason).toBe('missing_information')
+    // No handoff target configured â†’ conversation left unassigned.
     expect(h.state.updatePayload).not.toHaveProperty('assigned_agent_id')
   })
 
@@ -213,14 +214,14 @@ describe('dispatchInboundToAiReply — handoff', () => {
   it('sends a final handoff reply before assigning', async () => {
     h.loadAiConfig.mockResolvedValue(aiConfig({ handoffAgentId: 'agent-7' }))
     h.generateReply.mockResolvedValue({
-      text: 'Vou encaminhar suas informações para um especialista.',
+      text: 'Vou encaminhar suas informaÃ§Ãµes para um especialista.',
       handoff: true,
     })
     await dispatchInboundToAiReply(ARGS)
     expect(h.engineSendText).toHaveBeenCalledWith(
       expect.objectContaining({
         conversationId: 'conv-1',
-        text: 'Vou encaminhar suas informações para um especialista.',
+        text: 'Vou encaminhar suas informaÃ§Ãµes para um especialista.',
       }),
     )
     expect(h.state.updatePayload).toMatchObject({
@@ -229,3 +230,4 @@ describe('dispatchInboundToAiReply — handoff', () => {
     })
   })
 })
+

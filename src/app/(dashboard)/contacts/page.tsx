@@ -601,7 +601,14 @@ export default function ContactsPage() {
                     />
                   </TableCell>
                   <TableCell className="text-foreground font-medium">
-                    {contact.name || <span className="text-muted-foreground italic">{t('unnamed')}</span>}
+                    <span className="inline-flex items-center gap-2">
+                      {contact.name || <span className="text-muted-foreground italic">{t('unnamed')}</span>}
+                      {contact.name_source === 'ai' && (
+                        <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary" title={t('aiLearnedName')}>
+                          IA
+                        </span>
+                      )}
+                    </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs">
                     {contact.phone}

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+﻿import type { SupabaseClient } from '@supabase/supabase-js'
 
 const DEFAULT_PIPELINE_NAME = 'Sales Pipeline'
 const DEFAULT_STAGES = [
@@ -63,6 +63,47 @@ export async function ensureLeadDealForConversation(
   if (error) throw error
 }
 
+
+export async function moveOpenDealToQualified(
+  db: SupabaseClient,
+  input: {
+    accountId: string
+    userId: string
+    contactId: string
+    conversationId: string
+    contactName?: string | null
+    contactPhone?: string | null
+  },
+): Promise<void> {
+  await ensureLeadDealForConversation(db, input)
+
+  const { data: deal, error: dealError } = await db
+    .from('deals')
+    .select('id, pipeline_id')
+    .eq('account_id', input.accountId)
+    .eq('contact_id', input.contactId)
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (dealError) throw dealError
+  if (!deal) return
+
+  const stage = await ensureStageByName(db, deal.pipeline_id, 'Qualified')
+  if (!stage) return
+
+  const { error } = await db
+    .from('deals')
+    .update({
+      stage_id: stage.id,
+      conversation_id: input.conversationId,
+    })
+    .eq('account_id', input.accountId)
+    .eq('id', deal.id)
+
+  if (error) throw error
+}
 async function ensurePipeline(db: SupabaseClient, accountId: string, userId: string) {
   const { data: existing, error } = await db
     .from('pipelines')
@@ -123,4 +164,31 @@ async function ensureLeadStage(db: SupabaseClient, pipelineId: string) {
 function buildLeadTitle(name?: string | null, phone?: string | null): string {
   const label = name?.trim() || phone?.trim() || 'New contact'
   return `${label} lead`
+}
+async function ensureStageByName(db: SupabaseClient, pipelineId: string, name: string) {
+  const { data: stage, error } = await db
+    .from('pipeline_stages')
+    .select('id, name, position')
+    .eq('pipeline_id', pipelineId)
+    .ilike('name', name)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  if (stage) return stage
+
+  const fallback = DEFAULT_STAGES.find((s) => s.name.toLowerCase() === name.toLowerCase())
+  const { data: created, error: createError } = await db
+    .from('pipeline_stages')
+    .insert({
+      pipeline_id: pipelineId,
+      name,
+      color: fallback?.color ?? '#eab308',
+      position: fallback?.position ?? 1,
+    })
+    .select('id, name, position')
+    .single()
+
+  if (createError) throw createError
+  return created
 }
