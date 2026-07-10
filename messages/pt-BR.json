@@ -162,9 +162,9 @@
       "noTeammates": "Nenhum colega disponivel",
       "me": " (eu)",
       "noMessagesYet": "Nenhuma mensagem ainda",
-      "sendTemplateHint": "Enviar a modelo para start o conversa",
+      "sendTemplateHint": "Envie um modelo para iniciar a conversa",
       "selectConversation": "Selecione uma conversa",
-      "selectConversationHint": "Escolha a conversa de o left para start messaging",
+      "selectConversationHint": "Escolha uma conversa na lista para comecar a enviar mensagens",
       "today": "Hoje",
       "yesterday": "Ontem"
     },
@@ -172,7 +172,7 @@
       "expired": "Expirado",
       "xhRemaining": "restam {hours}h",
       "xmRemaining": "restam {minutes}min",
-      "noCustomerMessages": "Nenhum customer mensagems"
+      "noCustomerMessages": "Nenhuma mensagem do cliente"
     },
     "composer": {
       "draftHint": "Tap o ✨ para draft a resposta com IA — voce can editar it antes enviaring",
@@ -480,7 +480,7 @@
       "managePipelines": "Gerenciar funis",
       "addPipeline": "Adicionar funil",
       "addDeal": "Adicionar negocio",
-      "createToStartTracking": "Criar a funil para start tracking negocios",
+      "createToStartTracking": "Crie um funil para acompanhar negocios",
       "createPipeline": "Criar funil",
       "newPipeline": "Novo funil",
       "pipelineName": "Nome do funil",
@@ -578,7 +578,7 @@
       "avgDealSize": "Avg Negocio Size",
       "avgDealSizeTooltip": "Funil Value divided by Total Negocios — o average value de a single nenhumn-lost negocio.",
       "weightedValue": "Valor ponderado",
-      "weightedValueTooltip": "Expected revenue: each aberto negocio's value × its stage probability. First stage ≈ 10%, stages progress up para 90%, Won = 100%. Lost negocios are excluded.",
+      "weightedValueTooltip": "Receita esperada: valor de cada negocio aberto multiplicado pela probabilidade da etapa. A primeira etapa fica perto de 10%, as etapas avancam ate 90%, ganho = 100%. Negocios perdidos ficam de fora.",
       "wonThisMonth": "Won Este Month",
       "wonThisMonthTooltip": "Negocios marcados como ganhos desde o primeiro dia do mes atual.",
       "lostThisMonth": "Lost Este Month",
@@ -688,13 +688,13 @@
         "method": {
           "all": "Todos Contatos",
           "tags": "Filtrar by Tags",
-          "customField": "Custom Campo",
+          "customField": "Campo personalizado",
           "csv": "Enviar arquivo CSV"
         },
         "allDesc": "Enviar para todos {count} contatos in seu database.",
         "allDescLoading": "Enviar para todos contatos in seu database.",
         "tagDesc": "Enviar para contatos matching specific tags.",
-        "customFieldDesc": "Enviar para contatos matching a custom campo rule.",
+        "customFieldDesc": "Enviar para contatos que correspondem a uma regra de campo personalizado.",
         "csvDesc": "Envie um CSV com telefones (e nomes opcionais).",
         "selectTags": "Selecionar Tags",
         "searchTags": "Buscar tags...",
@@ -729,12 +729,12 @@
         "type": "Tipo",
         "typeStatic": "Valor estatico",
         "typeContact": "Contato Campo",
-        "typeCustom": "Custom Campo",
+        "typeCustom": "Campo personalizado",
         "staticValue": "Valor estatico",
         "contactField": "Contato Campo",
         "selectContactField": "Selecionar campo...",
-        "customField": "Custom Campo",
-        "selectCustomField": "Selecionar custom campo...",
+        "customField": "Campo personalizado",
+        "selectCustomField": "Selecionar campo personalizado...",
         "preview": "Previa",
         "previewSample": "Mostrando previa com dados de exemplo.",
         "noPreview": "Previa nao disponivel.",
@@ -754,7 +754,7 @@
         "audience": "Publico:",
         "audienceAll": "Todos contatos",
         "audienceTags": "Filtrared by tags",
-        "audienceField": "Filtrared by custom campo",
+        "audienceField": "Filtrado por campo personalizado",
         "audienceCsv": "CSV enviar arquivo",
         "variables": "Variaveis:",
         "variablesMapped": "{count} mapeado(s)",
@@ -823,7 +823,7 @@
     "builder": {
       "steps": {
         "send_message": "Enviar Mensagem",
-        "send_buttons": "Enviar Buttons",
+        "send_buttons": "Enviar botoes",
         "send_list": "Enviar List",
         "send_template": "Enviar Modelo",
         "add_tag": "Adicionar Tag",
@@ -842,7 +842,7 @@
           "hint": "Any incoming mensagem"
         },
         "first_inbound_message": {
-          "label": "First Mensagem de Contato",
+          "label": "Primeira mensagem do contato",
           "hint": "Primeira vez que este contato envia uma mensagem para voce (tambem funciona para contatos adicionados manualmente)"
         },
         "keyword_match": {
@@ -851,7 +851,7 @@
         },
         "interactive_reply": {
           "label": "Button / List Responder",
-          "hint": "Customer taps a button ou list row whose id matches — chain menus across automacaos"
+          "hint": "Cliente toca em um botao ou item da lista com ID correspondente - encadeie menus entre automacoes"
         },
         "new_contact_created": {
           "label": "Novo contato criado",
@@ -1028,13 +1028,13 @@
       "triggerManual": "Gatilho manual"
     },
     "edit": {
-      "notFound": "Flow nenhumt found.",
-      "backToFlows": "← Back para flows",
+      "notFound": "Fluxo nao encontrado.",
+      "backToFlows": "← Voltar para fluxos",
       "loadError": "Nao foi possivel carregar o fluxo."
     },
     "logs": {
       "title": "Execucoes",
-      "description": "The 50 most recent times este flow ran. Expand a row para see o engine's per-step log.",
+      "description": "As 50 execucoes mais recentes deste fluxo. Expanda uma linha para ver o log por etapa.",
       "emptyState": "Nenhuma execucao ainda. Acione o fluxo a partir de um numero pessoal do WhatsApp para ele aparecer aqui.",
       "loadError": "Nao foi possivel carregar execucoes.",
       "unknownContact": "Contato desconhecido",
@@ -1056,7 +1056,7 @@
       "whenLabel": "Quando...",
       "triggerKeywordTitle": "A mensagem contains a keyword",
       "triggerFirstInboundTitle": "Primeira mensagem recebida do cliente",
-      "triggerManualTitle": "Manual somente (nenhum auto-trigger)",
+      "triggerManualTitle": "Somente manual (sem disparo automatico)",
       "keywordsLabel": "Palavras-chave (separadas por virgula)",
       "keywordsPlaceholder": "suporte, ajuda, oi",
       "entryNodeTitle": "No de entrada:",
@@ -1068,8 +1068,8 @@
       "removeNode": "Remover no",
       "showAdvanced": "Mostrar avancado",
       "hideAdvanced": "Ocultar avancado",
-      "nodeKeyLabel": "Nenhumde key (internal identifier — keep stable para analytics)",
-      "replyIdsHint": "Responder IDs para each option are shown inline acima. They're returned by WhatsApp when a customer taps; voce usutodosy don't need para touch them.",
+      "nodeKeyLabel": "Chave do no (identificador interno - mantenha estavel para analises)",
+      "replyIdsHint": "Os IDs de resposta de cada opcao aparecem acima. O WhatsApp retorna esses IDs quando o cliente toca; normalmente voce nao precisa altera-los.",
       "badgeEntry": "Entrada",
       "noNodesYet": "Nenhum no ainda.",
       "deleteNode": "Excluir no",
@@ -1079,11 +1079,11 @@
       "noNodeDesc": "Selecione um no no canvas para editar sua configuracao.",
       "form": {
         "advancesTo": "Avanca para",
-        "textToCustomer": "Text enviado para o customer",
-        "promptToCustomer": "Prompt enviado para o customer",
+        "textToCustomer": "Texto enviado para o cliente",
+        "promptToCustomer": "Pergunta enviada para o cliente",
         "varKeyLabel": "Chave da variavel (salva em flow_runs.vars; alfanumerico + sublinhado)",
         "varKeyPlaceholder": "ex. nome, email, empresa",
-        "varKeyHelp": "Interpolate in downstream prompts e handoff nenhumtes com",
+        "varKeyHelp": "Use em prompts seguintes e notas de encaminhamento com",
         "advanceAfterCapture": "Depois de capturar, avancar para",
         "internalNote": "Internal nenhumte (for o agent picking up)",
         "endNodeHelp": "No terminal. Quando a execucao chega aqui, ela e marcada como concluida. Nenhuma configuracao necessaria.",
@@ -1144,15 +1144,15 @@
       "nodes": {
         "start": {
           "label": "Inicio",
-          "blurb": "Entry point de o flow"
+          "blurb": "Ponto de entrada do fluxo"
         },
         "send_message": {
           "label": "Enviar mensagem",
           "blurb": "Enviars a WhatsApp text mensagem"
         },
         "send_buttons": {
-          "label": "Enviar buttons",
-          "blurb": "Enviars quick-resposta buttons"
+          "label": "Enviar botoes",
+          "blurb": "Envia botoes de resposta rapida"
         },
         "send_list": {
           "label": "Enviar list",
@@ -1175,12 +1175,12 @@
           "blurb": "Adicionars ou removes a contato tag"
         },
         "handoff": {
-          "label": "Handoff para agent",
+          "label": "Encaminhar para agente",
           "blurb": "Hands o conversa para a human"
         },
         "end": {
           "label": "Fim",
-          "blurb": "Ends o flow"
+          "blurb": "Encerra o fluxo"
         }
       }
     },
@@ -1232,7 +1232,7 @@
       "tagsCount": "{count} {count, plural, =1 {tag} other {tags}}",
       "fieldsCount": "{count} {count, plural, =1 {campo personalizado} other {campos personalizados}}",
       "appearance": "modo {mode} · destaque {theme}",
-      "yourAccount": "Seu account",
+      "yourAccount": "Sua conta",
       "loading": "Carregando…"
     },
     "members": {
@@ -1276,7 +1276,7 @@
       "sendViaWhatsApp": "Enviar via WhatsApp",
       "done": "Concluir",
       "dialogTitle": "Convidar colega",
-      "dialogDesc": "Generate a one-time invite link. Share it via WhatsApp, Slack, ou any channel voce like — nenhum e-mail service obrigatorio.",
+      "dialogDesc": "Gere um link de convite unico. Compartilhe pelo WhatsApp, Slack ou qualquer canal que preferir - sem servico de e-mail obrigatorio.",
       "roleLabel": "Funcao",
       "validForLabel": "Link valido for",
       "days1": "1 dia",
@@ -1334,7 +1334,7 @@
       "description": "Crie modelos e envie para aprovacao da Meta. Use \"Sincronizar da Meta\" para trazer modelos aprovados em outro lugar.",
       "syncFromMeta": "Sincronizar da Meta",
       "syncing": "Sincronizando...",
-      "syncTitle": "Pull approved modelos de seu Meta WhatsApp Business Account",
+      "syncTitle": "Buscar modelos aprovados da sua conta Meta WhatsApp Business",
       "newTemplate": "Novo modelo",
       "noTemplates": "Nenhum modelo ainda.",
       "createFirst": "Crie seu primeiro modelo de mensagem para comecar.",
@@ -1351,7 +1351,7 @@
       "dialogEditTitle": "Editar Mensagem Modelo",
       "dialogNewTitle": "Novo modelo de mensagem",
       "dialogEditDesc": "Salve suas alteracoes para reenviar a Meta. O status voltara para PENDENTE durante a revisao.",
-      "dialogNewDesc": "Build a modelo e submit it para Meta para approval. Once approved, voce can use it in disparos e o inbox.",
+      "dialogNewDesc": "Crie um modelo e envie para aprovacao da Meta. Depois de aprovado, voce pode usa-lo em disparos e na caixa de entrada.",
       "authWarning": "Modelos de AUTENTICACAO tem corpo fixo e botao OTP, o que exige outro construtor. Por enquanto, crie-os no Meta WhatsApp Manager e use <bold>Sincronizar da Meta</bold> para importar.",
       "templateName": "Modelo Nenhumme",
       "namePlaceholder": "ex. order_confirmation",
@@ -1385,10 +1385,10 @@
       "samplePlaceholder": "Sample para {var}",
       "footer": "Footer (opcional)",
       "footerPlaceholder": "Texto opcional do rodape (max. 60 caracteres)",
-      "buttons": "Buttons (opcional)",
+      "buttons": "Botoes (opcional)",
       "addButton": "Adicionar Button",
-      "buttonsLimit": "Up para {max} buttons. QUICK_REPLY buttons must come antes URL / telefone / copiar-code buttons.",
-      "btnQuickReply": "Quick Responder",
+      "buttonsLimit": "Ate {max} botoes. Botoes de resposta rapida devem vir antes de URL / telefone / copiar codigo.",
+      "btnQuickReply": "Resposta rapida",
       "btnUrl": "URL",
       "btnPhone": "Telefone",
       "btnCopyCode": "Copiar Code",
@@ -1413,7 +1413,7 @@
       "toastSubmitNewSuccess": "Enviado a Meta. A revisao normalmente leva 24 horas. O status atualiza automaticamente.",
       "toastSaveEditDry": "Modelo atualizado (simulacao, sem chamada a Meta)",
       "toastSaveNewDry": "Modelo salvo (simulacao, sem chamada a Meta)",
-      "toastSyncCount": "Synced {total} {total, plural, =1 {template} other {templates}} de Meta",
+      "toastSyncCount": "Sincronizado {total} {total, plural, =1 {modelo} other {modelos}} da Meta",
       "toastSyncDetails": " ({inserted} novo(s), {updated} atualizado(s))",
       "toastSyncFailed": "Falha ao sync: {preview}",
       "toastSyncTruncated": "Sincronizados apenas os primeiros 2000 modelos. Sua conta tem mais. Sincronize novamente para continuar ou contate o suporte se isso persistir.",
@@ -1433,7 +1433,7 @@
       "viewer": "Visualizador",
       "viewerHint": "Read-somente across o app",
       "owner": "Proprietario",
-      "ownerHint": "Full control over account e billing"
+      "ownerHint": "Controle total da conta e cobranca"
     },
     "whatsapp": {
       "title": "Conexao do WhatsApp",
@@ -1461,11 +1461,11 @@
       "phoneNumberId": "ID do numero de telefone",
       "wabaId": "ID da conta WhatsApp Business",
       "accessToken": "Token de acesso permanente",
-      "accessTokenPlaceholder": "Informe seu access token",
+      "accessTokenPlaceholder": "Informe seu token de acesso",
       "tokenHidden": "O token esta oculto por seguranca. Reinsira para atualizar a configuracao.",
       "webhookVerifyToken": "Token de verificacao do webhook",
-      "webhookVerifyTokenPlaceholder": "Criar a custom verify token",
-      "webhookVerifyTokenHint": "A custom string voce criar. Must match o token voce set in Meta webhook configuracoes.",
+      "webhookVerifyTokenPlaceholder": "Crie um token de verificacao personalizado",
+      "webhookVerifyTokenHint": "Uma string personalizada criada por voce. Deve ser igual ao token configurado no webhook da Meta.",
       "twoStepPin": "PIN de verificacao em duas etapas",
       "optional": "(opcional)",
       "pinPlaceholder": "PIN de 6 digitos do Meta WhatsApp Manager",
@@ -1487,17 +1487,17 @@
       "step2": "Adicionar produto WhatsApp",
       "step2_1": "In seu app dashboard, clique \"Adicionar Product\"",
       "step2_2": "Find \"WhatsApp\" e clique \"Set Up\"",
-      "step2_3": "Follow o setup wizard para link seu business",
+      "step2_3": "Siga o assistente de configuracao para vincular sua empresa",
       "step3": "Obter credenciais da API",
       "step3_1": "Va para WhatsApp > API Setup",
       "step3_2": "Copie seu <strong class=\"text-foreground\">ID do numero de telefone</strong>",
       "step3_3": "Copiar seu <strong class=\"text-foreground\">WhatsApp Business Account ID</strong>",
-      "step3_4": "Generate a <strong class=\"text-foreground\">Permanent Access Token</strong> de Business Configuracoes > System Users",
+      "step3_4": "Gere um <strong class=\"text-foreground\">token de acesso permanente</strong> em Configuracoes do negocio > Usuarios do sistema",
       "step4": "Configurar webhooks",
       "step4_1": "Va para WhatsApp > Configuracao",
       "step4_2": "Clique \"Editar\" on o Webhook section",
       "step4_3": "Paste o <strong class=\"text-foreground\">Webhook Ctodosback URL</strong> de acima",
-      "step4_4": "Informe o same <strong class=\"text-foreground\">Verify Token</strong> voce set aqui",
+      "step4_4": "Informe o mesmo <strong class=\"text-foreground\">token de verificacao</strong> configurado aqui",
       "step4_5": "Subscribe para \"mensagems\" webhook campo",
       "metaDocs": "Documentacao da API WhatsApp da Meta"
     },
@@ -1584,7 +1584,7 @@
     },
     "security": {
       "title": "Login e seguranca",
-      "description": "Change seu senha e sair de seu devices. These keep seu account safe."
+      "description": "Altere sua senha e saia dos seus dispositivos. Isso ajuda a manter sua conta segura."
     },
     "apiKeys": {
       "title": "Chaves de API",
@@ -1630,7 +1630,7 @@
       "defaultCurrency": "Moeda padrao",
       "defaultCurrencyDesc": "Novos negocios usam esta moeda por padrao, e os totais do funil e painel aparecem nela. Negocios existentes mantem a moeda em que foram salvos.",
       "currencyLabel": "Moeda",
-      "adminOnlyHint": "Only account admins can change o default currency.",
+      "adminOnlyHint": "Somente admins da conta podem alterar a moeda padrao.",
       "save": "Salvar",
       "saving": "Salvando...",
       "saveFailed": "Falha ao salvar default currency",
@@ -1638,7 +1638,7 @@
     },
     "aiConfig": {
       "title": "Configuracao do agente",
-      "description": "Use sua propria chave da OpenAI ou Anthropic. O wacrm chama o provedor diretamente com sua chave, sem taxa de IA por usuario, e seus dados continuam seus. Isso alimenta rascunhos com IA na caixa de entrada, o bot de resposta automatica e o Playground.",
+      "description": "Use sua propria chave da OpenAI ou Anthropic. O wacrm chama o provedor diretamente com sua chave, sem taxa de IA por usuario, e seus dados continuam seus. Isso alimenta rascunhos com IA na caixa de entrada, o bot de resposta automatica e a tela de testes.",
       "adminOnlyConfig": "Only admins e owners can change o IA configuracao.",
       "loadFailed": "Falha ao carregar configuracao de IA",
       "providerAndKey": "Provedor e chave",
@@ -1647,30 +1647,30 @@
       "model": "Modelo",
       "apiKey": "Chave de API",
       "testKey": "Testar chave",
-      "testSuccess": "Key works — o provider responded.",
+      "testSuccess": "Chave funcionando - o provedor respondeu.",
       "testRejected": "The provider rejected o request.",
       "testNetworkError": "Nao foi possivel reach o provider.",
       "embeddingsKey": "Chave de embeddings",
       "optionalSemanticSearch": "(opcional - habilita busca semantica na base de conhecimento)",
       "embeddingsHint": "Uma chave da OpenAI usada apenas para gerar embeddings da sua base de conhecimento (text-embedding-3-small){sameKeyText}. Deixe em branco para usar busca por palavra-chave. Limpe o campo para desativar a busca semantica.",
-      "sameKeyText": " — can be o same key as acima",
+      "sameKeyText": " - pode ser a mesma chave acima",
       "behaviour": "Comportamento",
-      "behaviourDesc": "Tell o assistente about seu business — products, tone, what it may e may nenhumt promise. Este context feeds both drafts e auto-replies.",
+      "behaviourDesc": "Explique ao assistente sobre seu negocio - produtos, tom de voz, o que ele pode ou nao prometer. Esse contexto alimenta rascunhos e respostas automaticas.",
       "businessContext": "Contexto do negocio e instrucoes",
       "promptPlaceholder": "ex. We are Acme, a coffee-equipment store. Be warm e concise. Never quote prices ou delivery dates — hand off para a human para those.",
       "enableAssistant": "Ativar assistente de IA",
       "enableAssistantDesc": "Chave geral. Ativa o botao \"Rascunhar com IA\" na caixa de entrada.",
       "autoReply": "Responder automaticamente mensagens recebidas",
       "autoReplyDesc": "O bot responde automaticamente novas mensagens recebidas (somente quando nenhum fluxo trata a mensagem e nenhum agente esta atribuido). Transfere para uma pessoa quando nao consegue ajudar.",
-      "maxAutoReplies": "Max auto-replies per conversa",
-      "maxAutoRepliesDesc": "After este many bot replies in one thread, o bot goes quiet.",
+      "maxAutoReplies": "Maximo de respostas automaticas por conversa",
+      "maxAutoRepliesDesc": "Depois desse numero de respostas do bot na mesma conversa, ele para de responder.",
       "handoffTo": "Transferir para",
       "handoffToDesc": "When o bot can’t help — ou hits o resposta cap — it pauses e routes o chat aqui, com a short nenhumte on what happened.",
       "handoffQueue": "Fila sem atribuicao (qualquer agente pode assumir)",
       "remove": "Remover",
       "save": "Salvar",
       "missingModel": "Informe o nome do modelo.",
-      "missingApiKey": "Informe seu API key.",
+      "missingApiKey": "Informe sua chave de API.",
       "saveSuccess": "Assistente de IA salvo.",
       "saveFailed": "Falha ao salvar.",
       "removeSuccess": "IA configuracao removed.",
@@ -1690,7 +1690,7 @@
       "title": "Base de conhecimento",
       "description": "Adicionar FAQs, policies, ou product details. The assistente retrieves o relevant pieces when drafting e auto-respostaing, so it can answer instead de handing off.{searchType}",
       "semanticSearchOn": " Busca semantica ativada (chave de embeddings configurada).",
-      "keywordSearchOn": " Using keyword buscar — adicionar an embeddings key acima para semantic buscar.",
+      "keywordSearchOn": " Usando busca por palavra-chave - adicione uma chave de embeddings acima para busca semantica.",
       "noDocs": "Nenhum documento ainda.",
       "editDocTitle": "Titulo",
       "editDocTitlePlaceholder": "ex. Returns & refunds policy",
@@ -1700,7 +1700,7 @@
       "saveDoc": "Salvar documento",
       "addDoc": "Adicionar documento",
       "reindex": "Reindexar",
-      "reindexTooltip": "Re-embed todos documentos (ex. depois adicionaring an embeddings key)",
+      "reindexTooltip": "Reprocessar embeddings de todos os documentos (ex.: depois de adicionar uma chave de embeddings)",
       "loading": "Carregando…"
     },
     "quickReplies": {
@@ -1743,13 +1743,13 @@
   "AiAgents": {
     "page": {
       "title": "Agentes de IA",
-      "description": "Seu agente de IA com sua propria chave - configure, teste no playground e depois deixe responder clientes na caixa de entrada.",
-      "playground": "Playground",
+      "description": "Seu agente de IA com sua propria chave - configure, teste e depois deixe responder clientes na caixa de entrada.",
+      "playground": "Teste",
       "setup": "Configuracao",
       "usage": "Uso"
     },
     "playground": {
-      "title": "Playground",
+      "title": "Teste",
       "subtitle": "teste respostas como se voce fosse um cliente",
       "reset": "Redefinir",
       "notConfigured": "Nenhum agente configurado ainda - conclua a Configuracao primeiro.",
@@ -1764,16 +1764,16 @@
     },
     "usage": {
       "loadError": "Falha ao carregar uso",
-      "title": "Uso de tokens",
-      "description": "Tokens gastos com sua chave do provedor em rascunhos e respostas automaticas. Apenas contagens sao salvas - nenhum conteudo de mensagem fica armazenado aqui.",
+      "title": "Uso de creditos",
+      "description": "Creditos gastos com sua chave do provedor em rascunhos e respostas automaticas. Apenas contagens sao salvas - nenhum conteudo de mensagem fica armazenado aqui.",
       "lastDays": "Ultimos {days} dias",
       "emptyTitle": "Nenhum uso de IA nos ultimos {days} dias ainda.",
       "emptyDesc": "Isso sera preenchido quando o assistente criar rascunhos e respostas automaticas.",
-      "totalTokens": "Total de tokens",
+      "totalTokens": "Total de creditos",
       "llmCalls": "Chamadas LLM",
       "autoReply": "Resposta automatica",
       "drafts": "Rascunhos",
-      "tokensPerDay": "Tokens por dia",
+      "tokensPerDay": "Creditos por dia",
       "byModel": "Por modelo",
       "call": "chamada",
       "calls": "chamadas",
