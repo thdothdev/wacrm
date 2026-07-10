@@ -1213,6 +1213,20 @@
       "modeRemove": "Remove",
       "tagPicked": "{mode} tag {tag}…",
       "tagNone": "{mode} tag (none picked)"
+    },
+    "templates": {
+      "welcome_menu": {
+        "name": "Welcome menu",
+        "description": "Greet customers who type a keyword and route them to the right agent based on whether they're new or existing."
+      },
+      "faq_bot": {
+        "name": "FAQ bot",
+        "description": "Answer common questions automatically. Customer picks a topic from a list; the bot replies with the answer and ends."
+      },
+      "lead_capture": {
+        "name": "Lead capture",
+        "description": "Greet first-time inbounds, capture name + email + company, then hand off to sales with the answers in the note."
+      }
     }
   },
   "Settings": {

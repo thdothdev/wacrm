@@ -1016,7 +1016,7 @@
       "startTemplate": "Comecar de um modelo",
       "nodeCount": "{count} {count, plural, =1 {no} other {nos}}",
       "startBlank": "Ou comecar em branco",
-      "placeholderName": "ex. Welcome menu",
+      "placeholderName": "ex. Menu de boas-vindas",
       "cancel": "Cancelar",
       "createBlank": "Criar fluxo em branco",
       "runCount": "{count} {count, plural, =1 {execucao} other {execucoes}}",
@@ -1213,6 +1213,20 @@
       "modeRemove": "Remover",
       "tagPicked": "tag {tag} em modo {mode}...",
       "tagNone": "{mode} tag (nenhumne picked)"
+    },
+    "templates": {
+      "welcome_menu": {
+        "name": "Menu de boas-vindas",
+        "description": "Cumprimente clientes que digitam uma palavra-chave e encaminhe para o agente certo conforme sejam novos ou existentes."
+      },
+      "faq_bot": {
+        "name": "Bot de FAQ",
+        "description": "Responda perguntas comuns automaticamente. O cliente escolhe um topico na lista; o bot responde e encerra."
+      },
+      "lead_capture": {
+        "name": "Captura de lead",
+        "description": "Receba novos contatos, colete nome, e-mail e empresa, e encaminhe para vendas com as respostas na nota."
+      }
     }
   },
   "Settings": {
