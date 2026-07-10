@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/select';
 import { SettingsPanelHead } from './settings-panel-head';
 import { AiKnowledgeCard } from './ai-knowledge';
-import { AI_PROVIDER_DEFAULT_MODEL } from '@/lib/ai/defaults';
+import { AI_PROVIDER_DEFAULT_MODEL, ELUMINA_LUMI_PROMPT } from '@/lib/ai/defaults';
 import type { AiProvider } from '@/lib/ai/types';
 import type { AccountMember } from '@/types';
 import { fetchAccountMembers, memberLabel } from '@/lib/account/members';
@@ -51,7 +51,7 @@ const KEY_PLACEHOLDER: Record<AiProvider, string> = {
 const PROMPT_TEMPLATES = [
   {
     key: 'sales',
-    body: 'Voce e uma assistente comercial. Cumprimente o cliente, pergunte o nome no inicio se ainda nao souber, entenda objetivo, volume, prazo e contexto atual. Responda com clareza, faca uma pergunta por vez e encaminhe para humano quando houver pedido comercial, proposta, preco, reuniao ou decisao que precise da equipe.',
+    body: ELUMINA_LUMI_PROMPT,
   },
   {
     key: 'support',
