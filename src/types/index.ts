@@ -187,10 +187,35 @@ export interface Conversation {
 }
 
 // ============================================================
+// Calendar
+// ============================================================
+
+export type CalendarEventStatus = 'pending' | 'done' | 'cancelled';
+
+export interface CalendarEvent {
+  id: string;
+  account_id: string;
+  user_id: string;
+  assigned_to?: string | null;
+  contact_id: string;
+  conversation_id?: string | null;
+  title: string;
+  starts_at: string;
+  status: CalendarEventStatus;
+  note?: string | null;
+  ai_suggested?: boolean;
+  created_at: string;
+  updated_at: string;
+  contact?: Contact | null;
+  conversation?: Conversation | null;
+  assignee?: Profile | null;
+}
+
+// ============================================================
 // Notifications (migration 027)
 // ============================================================
 
-export type NotificationType = 'conversation_assigned';
+export type NotificationType = 'conversation_assigned' | 'calendar_event_due';
 
 export interface Notification {
   id: string;

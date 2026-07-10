@@ -38,7 +38,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "calendar": "Calendar"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -55,7 +56,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "calendar": "Calendar"
   },
   "ModeToggle": {
     "switchMode": "Switch to {mode} mode"

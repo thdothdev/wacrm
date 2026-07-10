@@ -38,7 +38,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuracoes",
-    "menuSignOut": "Sair"
+    "menuSignOut": "Sair",
+    "calendar": "Agenda"
   },
   "Header": {
     "dashboard": "Painel",
@@ -55,7 +56,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuracoes",
-    "menuSignOut": "Sair"
+    "menuSignOut": "Sair",
+    "calendar": "Agenda"
   },
   "ModeToggle": {
     "switchMode": "Alternar para o modo {mode}"

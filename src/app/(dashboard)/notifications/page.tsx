@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import type { Notification } from "@/types";
-import { Bell, CheckCheck, Loader2, UserPlus } from "lucide-react";
+import { Bell, CalendarClock, CheckCheck, Loader2, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 const TYPE_ICON: Record<Notification["type"], typeof Bell> = {
   conversation_assigned: UserPlus,
+  calendar_event_due: CalendarClock,
 };
 
 function assignedContactName(body: string | null | undefined): string {
@@ -96,7 +97,8 @@ export default function NotificationsPage() {
 
   const handleClick = useCallback((n: Notification) => {
     if (!n.read_at) markRead(n.id);
-    if (n.conversation_id) router.push(`/inbox?c=${n.conversation_id}`);
+    if (n.type === "calendar_event_due") router.push("/calendar");
+    else if (n.conversation_id) router.push(`/inbox?c=${n.conversation_id}`);
   }, [markRead, router]);
 
   const unreadIds = notifications?.filter((n) => !n.read_at).map((n) => n.id) ?? [];
@@ -152,7 +154,7 @@ export default function NotificationsPage() {
           {notifications.map((n) => {
             const Icon = TYPE_ICON[n.type] ?? Bell;
             const isUnread = !n.read_at;
-            const title = n.type === "conversation_assigned" ? t("conversationAssignedTitle") : n.title;
+            const title = n.type === "conversation_assigned" ? t("conversationAssignedTitle") : n.type === "calendar_event_due" ? "Lembrete da agenda" : n.title;
             const body = n.type === "conversation_assigned" ? t("conversationAssignedBody", { contact: assignedContactName(n.body) }) : n.body;
             return (
               <li key={n.id}>

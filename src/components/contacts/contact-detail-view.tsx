@@ -38,8 +38,10 @@ import {
   X,
   DollarSign,
   LayoutTemplate,
+  CalendarPlus,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { ScheduleEventDialog } from '@/components/calendar/schedule-event-dialog';
 
 interface ContactDetailViewProps {
   open: boolean;
@@ -89,6 +91,7 @@ export function ContactDetailView({
   // Custom fields tab
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [savingCustom, setSavingCustom] = useState(false);
   const [loadingCustom, setLoadingCustom] = useState(false);
 
@@ -438,7 +441,7 @@ export function ContactDetailView({
                   </div>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   onClick={() => setTemplatePickerOpen(true)}
@@ -451,6 +454,10 @@ export function ContactDetailView({
                     <LayoutTemplate className="size-4" />
                   )}
                   {t('sendTemplateBtn')}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setScheduleOpen(true)}>
+                  <CalendarPlus className="size-4" />
+                  Agendar
                 </Button>
               </div>
             </SheetHeader>

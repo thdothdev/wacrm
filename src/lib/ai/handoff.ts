@@ -41,7 +41,10 @@ export function buildHandoffSummary(args: {
   if (!lastCustomer) return base
 
   const quote = truncate(lastCustomer.content.trim(), MAX_QUOTE_LEN)
-  return `${base} Ultima mensagem do cliente: "${quote}"`
+  const suggestion = suggestsCalendarFollowUp(lastCustomer.content)
+    ? " Sugestao: agendar retorno ou reuniao para o especialista."
+    : ""
+  return `${base} Ultima mensagem do cliente: "${quote}"${suggestion}`
 }
 
 export function inferHandoffReason(messages: ChatMessage[]): HandoffReason {
@@ -78,6 +81,10 @@ export function handoffReasonLabel(reason: HandoffReason): string {
     default:
       return 'IA nao tinha informacao suficiente'
   }
+}
+
+function suggestsCalendarFollowUp(text: string): boolean {
+  return /\b(reuniao|demonstra|demo|retorno|proposta|orcamento|agenda|agendar)\b/i.test(text)
 }
 
 function truncate(text: string, max: number): string {

@@ -27,6 +27,7 @@ import {
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  CalendarPlus,
 } from "lucide-react";
 import { format, isToday, isYesterday, differenceInHours } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -49,6 +50,7 @@ import {
 import { deleteAccountMedia } from "@/lib/storage/upload-media";
 import { TemplatePicker } from "./template-picker";
 import { AiThreadBanner } from "./ai-thread-banner";
+import { ScheduleEventDialog } from "@/components/calendar/schedule-event-dialog";
 import { buildReplyPreview } from "./reply-quote";
 import { toast } from "sonner";
 
@@ -169,6 +171,7 @@ export function MessageThread({
   onToggleContactPanel,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
@@ -965,6 +968,16 @@ export function MessageThread({
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={() => setScheduleOpen(true)}
+            aria-label="Agendar retorno"
+            title="Agendar retorno"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+          </button>
+
           {/* Status dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger className={cn(
@@ -1148,6 +1161,13 @@ export function MessageThread({
             onAssignChange(conversation.id, patch.assigned_agent_id ?? null);
           }
         }}
+      />
+
+      <ScheduleEventDialog
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        contact={contact ? { id: contact.id, name: contact.name ?? null, phone: contact.phone ?? null } : null}
+        conversationId={conversation.id}
       />
 
       {/* Composer */}
