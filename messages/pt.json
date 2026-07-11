@@ -39,7 +39,9 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configuracoes",
     "menuSignOut": "Sair",
-    "calendar": "Agenda"
+    "calendar": "Agenda",
+    "collapseMenu": "Minimizar menu",
+    "expandMenu": "Expandir menu"
   },
   "Header": {
     "dashboard": "Painel",

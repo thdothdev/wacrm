@@ -18,7 +18,20 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  useEffect(() => {
+    setSidebarCollapsed(localStorage.getItem("wacrm:sidebar-collapsed") === "true");
+  }, []);
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem("wacrm:sidebar-collapsed", String(next));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -44,7 +57,12 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       {/* Reports this tab's online/away presence once we know a user is
           signed in. Headless — renders nothing. */}
       <PresenceHeartbeat />
-      <Sidebar open={sidebarOpen} onClose={closeSidebar} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={closeSidebar}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleSidebarCollapsed}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onOpenSidebar={() => setSidebarOpen(true)} />
         {/* Thinner horizontal padding on mobile so cards have room to breathe. */}

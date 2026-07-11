@@ -39,7 +39,9 @@
     "menuProfile": "Profile",
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "collapseMenu": "Collapse menu",
+    "expandMenu": "Expand menu"
   },
   "Header": {
     "dashboard": "Dashboard",
