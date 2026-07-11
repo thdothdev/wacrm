@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Bot, Sparkles, Settings2, BarChart3 } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AiPlayground } from '@/components/agents/ai-playground';
 import { AiUsageCard } from '@/components/agents/ai-usage';
 import { AiConfig } from '@/components/settings/ai-config';
+import { AiAutoReplyToggle } from '@/components/agents/ai-auto-reply-toggle';
 import { useAuth } from '@/hooks/use-auth';
 import { canEditSettings } from '@/lib/auth/roles';
 
@@ -46,6 +47,7 @@ export default function AgentsPage() {
         </h1>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">{t('description')}</p>
+      <AiAutoReplyToggle />
 
       {decided && (
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mt-6">

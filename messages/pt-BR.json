@@ -1771,7 +1771,19 @@
       "description": "Seu agente de IA com sua propria chave - configure, teste e depois deixe responder clientes na caixa de entrada.",
       "playground": "Teste",
       "setup": "Configuracao",
-      "usage": "Uso"
+      "usage": "Uso",
+      "inboxAgentControl": "Controle do agente no inbox",
+      "agentEnabled": "Agente ativo: ele pode responder automaticamente novas mensagens na caixa de entrada.",
+      "agentDisabled": "Agente desativado: ele nao respondera automaticamente no inbox.",
+      "agentInactive": "Ative o assistente na Configuracao antes de liberar respostas no inbox.",
+      "agentNotConfigured": "Configure o agente antes de ativar respostas no inbox.",
+      "enableAgent": "Ativar agente",
+      "disableAgent": "Desativar agente",
+      "saving": "Salvando...",
+      "agentEnabledToast": "Agente ativado no inbox",
+      "agentDisabledToast": "Agente desativado no inbox",
+      "statusLoadFailed": "Falha ao carregar status do agente",
+      "statusSaveFailed": "Falha ao atualizar agente"
     },
     "playground": {
       "title": "Teste",

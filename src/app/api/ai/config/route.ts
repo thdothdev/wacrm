@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import {
   getCurrentAccount,
   requireRole,
@@ -18,7 +18,7 @@ function bad(message: string) {
  * GET /api/ai/config
  *
  * Any member may read the config so the inbox/settings can reflect
- * whether AI is set up. The encrypted key is NEVER returned — only a
+ * whether AI is set up. The encrypted key is NEVER returned â€” only a
  * `has_key` flag; the settings form shows a masked placeholder.
  */
 export async function GET() {
@@ -27,7 +27,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('ai_configs')
-      // `api_key` is selected only to derive `has_key` — it is stripped
+      // `api_key` is selected only to derive `has_key` â€” it is stripped
       // out below and never returned to the client.
       .select(
         'provider, model, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, api_key, embeddings_api_key',
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     // Handoff routing target for auto-reply. A non-empty string must be a
     // member of this account (else the conversation would be assigned to a
     // stranger); an empty string / null means "leave unassigned" (the
-    // shared queue). Absent → left unchanged on update below.
+    // shared queue). Absent â†’ left unchanged on update below.
     const rawHandoff =
       typeof body.handoff_agent_id === 'string' ? body.handoff_agent_id.trim() : ''
     const handoffProvided = 'handoff_agent_id' in body
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
       try {
         apiKeyPlain = decrypt(existing.api_key)
       } catch {
-        return bad('Stored API key could not be decrypted — re-enter your key.')
+        return bad('Stored API key could not be decrypted â€” re-enter your key.')
       }
     } else {
       return bad('api_key is required')
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
     // Only spend a provider round-trip when the credentials that affect
     // reachability actually changed. A save that just flips a toggle or
     // edits the system prompt on an existing, already-validated config
-    // skips the call — no wasted token/latency on the account's key.
+    // skips the call â€” no wasted token/latency on the account's key.
     const credentialsChanged =
       !existing ||
       rawKey !== '' ||
@@ -249,6 +249,59 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const { supabase, accountId, userId } = await requireRole('admin')
+
+    const limit = checkRateLimit(`ai-config:${userId}`, RATE_LIMITS.adminAction)
+    if (!limit.success) return rateLimitResponse(limit)
+
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== 'object') return bad('Invalid request body')
+    if (typeof body.auto_reply_enabled !== 'boolean') {
+      return bad('auto_reply_enabled must be boolean')
+    }
+
+    const { data: existing, error: readErr } = await supabase
+      .from('ai_configs')
+      .select('id')
+      .eq('account_id', accountId)
+      .maybeSingle()
+    if (readErr) {
+      console.error('[ai/config PATCH] fetch error:', readErr)
+      return NextResponse.json(
+        { error: 'Failed to load AI configuration' },
+        { status: 500 },
+      )
+    }
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'AI agent is not configured' },
+        { status: 404 },
+      )
+    }
+
+    const { error } = await supabase
+      .from('ai_configs')
+      .update({ auto_reply_enabled: body.auto_reply_enabled })
+      .eq('account_id', accountId)
+    if (error) {
+      console.error('[ai/config PATCH] update error:', error)
+      return NextResponse.json(
+        { error: 'Failed to update AI agent' },
+        { status: 500 },
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      auto_reply_enabled: body.auto_reply_enabled,
+    })
+  } catch (err) {
+    return toErrorResponse(err)
+  }
+}
+
 /**
  * DELETE /api/ai/config  (admin+)
  *
@@ -274,3 +327,6 @@ export async function DELETE() {
     return toErrorResponse(err)
   }
 }
+
+
+

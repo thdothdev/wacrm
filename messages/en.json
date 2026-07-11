@@ -1770,7 +1770,19 @@
       "description": "Your bring-your-own-key AI agent - set it up, then test it in the playground before it replies to customers in the inbox.",
       "playground": "Playground",
       "setup": "Setup",
-      "usage": "Usage"
+      "usage": "Usage",
+      "inboxAgentControl": "Inbox agent control",
+      "agentEnabled": "Agent enabled: it can auto-reply to new inbox messages.",
+      "agentDisabled": "Agent disabled: it will not auto-reply in the inbox.",
+      "agentInactive": "Enable the assistant in Setup before allowing inbox replies.",
+      "agentNotConfigured": "Configure the agent before enabling inbox replies.",
+      "enableAgent": "Enable agent",
+      "disableAgent": "Disable agent",
+      "saving": "Saving...",
+      "agentEnabledToast": "Agent enabled in inbox",
+      "agentDisabledToast": "Agent disabled in inbox",
+      "statusLoadFailed": "Failed to load agent status",
+      "statusSaveFailed": "Failed to update agent"
     },
     "playground": {
       "title": "Playground",
