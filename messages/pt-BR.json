@@ -1,4 +1,4 @@
-{
+﻿{
   "LoginPage": {
     "titleAccept": "Entre para aceitar",
     "titleWelcome": "Bem-vindo de volta",
@@ -15,7 +15,7 @@
     "createAccount": "Criar conta"
   },
   "Sidebar": {
-    "title": "CRM para WhatsApp",
+    "title": "AutoIA CRM",
     "dashboard": "Painel",
     "inbox": "Caixa de entrada",
     "notifications": "Notificacoes",
@@ -179,7 +179,7 @@
       "noCustomerMessages": "Nenhuma mensagem do cliente"
     },
     "composer": {
-      "draftHint": "Tap o ✨ para draft a resposta com IA — voce can editar it antes enviaring",
+      "draftHint": "Tap o âœ¨ para draft a resposta com IA â€” voce can editar it antes enviaring",
       "sessionExpiredHint": "Sessao de 24 horas expirada. Use um modelo para retomar o contato.",
       "templates": "Modelos",
       "readOnlyPlaceholder": "Somente leitura - visualizadores podem navegar, mas nao responder",
@@ -196,7 +196,7 @@
       "voiceNote": "Mensagem de voz",
       "sendTemplate": "Enviar modelo",
       "draftWithAI": "Rascunhar resposta com IA",
-      "addCaption": "Adicionar a caption…",
+      "addCaption": "Adicionar a captionâ€¦",
       "removeAttachment": "Remover anexo",
       "moreActions": "Mais",
       "interactiveMessage": "Mensagem interativa",
@@ -424,9 +424,9 @@
       "uploadHint": ".csv up para seu browser limit",
       "rowsReady": "{count} linha pronta",
       "rowsReady_plural": "{count} linhas prontas",
-      "preview": "Previa · primeiras {count}",
-      "previewTags": "{tags} tag · {contacts} contato",
-      "previewTags_plural": "{tags} tags · {contacts} contatos",
+      "preview": "Previa Â· primeiras {count}",
+      "previewTags": "{tags} tag Â· {contacts} contato",
+      "previewTags_plural": "{tags} tags Â· {contacts} contatos",
       "moreRows": "+ {count} more row nenhumt shown",
       "moreRows_plural": "+ {count} more rows nenhumt shown",
       "importComplete": "Importacao concluida",
@@ -462,10 +462,10 @@
     },
     "customFields": {
       "title": "Campos personalizados",
-      "desc": "Define extra contato campos (ex. ZIP code, lead source). They appear on every contato e in o “Atualizar Contato Campo” automacao action.",
+      "desc": "Define extra contato campos (ex. ZIP code, lead source). They appear on every contato e in o â€œAtualizar Contato Campoâ€ automacao action.",
       "addField": "Adicionar",
       "fieldName": "Nome do novo campo...",
-      "loading": "Carregando…",
+      "loading": "Carregandoâ€¦",
       "empty": "Nenhum campo personalizado ainda.",
       "renameAria": "Renomear {name}",
       "deleteTitle": "Excluir campo",
@@ -582,7 +582,7 @@
       "pipelineValue": "Valor do funil",
       "pipelineValueTooltip": "Soma dos valores de todos os negocios neste funil, exceto os marcados como perdidos.",
       "avgDealSize": "Avg Negocio Size",
-      "avgDealSizeTooltip": "Funil Value divided by Total Negocios — o average value de a single nenhumn-lost negocio.",
+      "avgDealSizeTooltip": "Funil Value divided by Total Negocios â€” o average value de a single nenhumn-lost negocio.",
       "weightedValue": "Valor ponderado",
       "weightedValueTooltip": "Receita esperada: valor de cada negocio aberto multiplicado pela probabilidade da etapa. A primeira etapa fica perto de 10%, as etapas avancam ate 90%, ganho = 100%. Negocios perdidos ficam de fora.",
       "wonThisMonth": "Won Este Month",
@@ -776,7 +776,7 @@
   "Automations": {
     "list": {
       "title": "Automacoes",
-      "subtitle": "Crie fluxos de trabalho que reagem automaticamente a eventos do WhatsApp®.",
+      "subtitle": "Crie fluxos de trabalho que reagem automaticamente a eventos do WhatsAppÂ®.",
       "create": "Criar automacao",
       "retry": "Tentar novamente",
       "templatesTitle": "Modelos de inicio rapido",
@@ -897,7 +897,7 @@
         "saveFailed": "Falha ao salvar"
       },
       "tags": {
-        "select": "Selecionar a tag…",
+        "select": "Selecionar a tagâ€¦",
         "placeholder": "ID da tag",
         "unknown": "{id} (unknenhumwn tag)"
       },
@@ -909,7 +909,7 @@
         "unknown": "{id} (unknenhumwn campo)"
       },
       "agents": {
-        "select": "Selecionar an agent…",
+        "select": "Selecionar an agentâ€¦",
         "placeholder": "ID do agente",
         "unknown": "{id} (unknenhumwn agent)"
       },
@@ -918,8 +918,8 @@
         "pipelineIdLabel": "Funil id",
         "stageLabel": "Etapa",
         "stageIdLabel": "ID da etapa",
-        "selectPipeline": "Selecionar a funil…",
-        "selectStage": "Selecionar a stage…",
+        "selectPipeline": "Selecionar a funilâ€¦",
+        "selectStage": "Selecionar a stageâ€¦",
         "selectPipelineFirst": "Selecione um funil primeiro...",
         "unknownPipeline": "{id} (unknenhumwn funil)",
         "unknownStage": "{id} (unknenhumwn stage)"
@@ -928,8 +928,8 @@
         "templateLabel": "Modelo",
         "templateNameLabel": "Nome do modelo",
         "languageLabel": "Idioma",
-        "select": "Selecionar a modelo…",
-        "unknown": "{name} ({lang}) — nenhumt in approved list",
+        "select": "Selecionar a modeloâ€¦",
+        "unknown": "{name} ({lang}) â€” nenhumt in approved list",
         "unknownLang": "desconhecido"
       },
       "branches": {
@@ -939,7 +939,7 @@
       "addStep": "Adicionar step",
       "config": {
         "messageText": "Mensagem text",
-        "placeholderMessageText": "Hi! Thanks para reaching out…",
+        "placeholderMessageText": "Hi! Thanks para reaching outâ€¦",
         "tagLabel": "Tag",
         "modeLabel": "Modo",
         "modes": {
@@ -1035,7 +1035,7 @@
     },
     "edit": {
       "notFound": "Fluxo nao encontrado.",
-      "backToFlows": "← Voltar para fluxos",
+      "backToFlows": "â† Voltar para fluxos",
       "loadError": "Nao foi possivel carregar o fluxo."
     },
     "logs": {
@@ -1096,13 +1096,13 @@
         "bodyText": "Texto do corpo",
         "footerText": "Footer (opcional, 60 chars)",
         "buttonsHelp": "Botoes (1-3) - cada um encaminha para um proximo no diferente",
-        "optionTitlePlaceholder": "Visible titulo (≤20 chars)",
+        "optionTitlePlaceholder": "Visible titulo (â‰¤20 chars)",
         "nextNodePlaceholder": "Proximo no...",
         "addButton": "Adicionar button",
-        "buttonLabel": "Rotulo do botao para expandir (≤20 caracteres)",
-        "rowsHelp": "Rows (1–10 total across todos sections)",
+        "buttonLabel": "Rotulo do botao para expandir (â‰¤20 caracteres)",
+        "rowsHelp": "Rows (1â€“10 total across todos sections)",
         "sectionTitlePlaceholder": "Section {count} titulo (opcional)",
-        "rowTitlePlaceholder": "Row titulo (≤24)",
+        "rowTitlePlaceholder": "Row titulo (â‰¤24)",
         "addRow": "Adicionar row",
         "addSection": "Adicionar section",
         "ifLabel": "If",
@@ -1113,7 +1113,7 @@
         "tagLabel": "Tag",
         "fieldLabel": "Campo",
         "pickTag": "Escolha uma tag...",
-        "pickField": "Pick a campo…",
+        "pickField": "Pick a campoâ€¦",
         "operatorLabel": "Operador",
         "isPresent": "esta presente",
         "isAbsent": "esta ausente",
@@ -1133,14 +1133,14 @@
         "documentLabel": "Documento (PDF, Word, Excel, PowerPoint, TXT)",
         "fileLabel": "Arquivo",
         "removeFile": "Remove arquivo",
-        "uploading": "Upcarregando…",
+        "uploading": "Upcarregandoâ€¦",
         "clickToUpload": "Clique para enviar arquivo (max 16 MB)",
         "captionLabel": "Caption (opcional, shown under o midia)",
         "filenameLabel": "Nome do arquivo exibido ao cliente (somente documentos)",
         "filenamePlaceholder": "invoice.pdf",
         "advanceAfterSending": "After enviaring, advance to",
         "pickNextNode": "Escolha o proximo no...",
-        "none": "— Nenhumne —"
+        "none": "â€” Nenhumne â€”"
       },
       "categories": {
         "messaging": "Mensagens",
@@ -1251,9 +1251,9 @@
       "tagsAndFields": "Tags e campos personalizados",
       "tagsCount": "{count} {count, plural, =1 {tag} other {tags}}",
       "fieldsCount": "{count} {count, plural, =1 {campo personalizado} other {campos personalizados}}",
-      "appearance": "modo {mode} · destaque {theme}",
+      "appearance": "modo {mode} Â· destaque {theme}",
       "yourAccount": "Sua conta",
-      "loading": "Carregando…"
+      "loading": "Carregandoâ€¦"
     },
     "members": {
       "title": "Membros da equipe",
@@ -1304,7 +1304,7 @@
       "days30": "30 dias",
       "labelTitle": "Rotulo",
       "optional": "(opcional)",
-      "labelPlaceholder": "ex. Sara — support team",
+      "labelPlaceholder": "ex. Sara â€” support team",
       "labelHint": "Helps voce remember who voce enviado o link para in o pendente list abaixo.",
       "cancel": "Cancelar",
       "creating": "Criando...",
@@ -1380,7 +1380,7 @@
       "category": "Categoria",
       "language": "Idioma",
       "langFixed": "O idioma fica fixo quando o modelo existe na Meta.",
-      "langHint": "Must match o exact code on Meta — <code>en_US</code> e <code>en</code> are distinct.",
+      "langHint": "Must match o exact code on Meta â€” <code>en_US</code> e <code>en</code> are distinct.",
       "header": "Cabecalho",
       "headerNone": "Nenhumne",
       "headerText": "Texto",
@@ -1391,12 +1391,12 @@
       "headerSampleAria": "Sample value para header variable",
       "headerSamplePlaceholder": "Valor de exemplo para {{1}} (obrigatorio para revisao da Meta)",
       "uploadImage": "Enviar arquivo imagem",
-      "uploadHint": "JPEG ou PNG, ≤5 MB",
+      "uploadHint": "JPEG ou PNG, â‰¤5 MB",
       "mediaUrlPlaceholder": "https://... (ou cole um link publico {format})",
-      "imageHint": "Envie uma imagem JPEG/PNG (≤5 MB, recomendacao ≥800×418 px) ou cole um link HTTPS publico. Nos enviaremos para a Meta revisar automaticamente.",
+      "imageHint": "Envie uma imagem JPEG/PNG (â‰¤5 MB, recomendacao â‰¥800Ã—418 px) ou cole um link HTTPS publico. Nos enviaremos para a Meta revisar automaticamente.",
       "mediaHint": "Deve ser um link HTTPS publico. A Meta acessa uma vez durante a revisao, entao ele precisa permanecer ativo por cerca de 24h.",
-      "videoHint": " Recomendado: MP4 / 3GPP, ≤16 MB, ≤60 segundos.",
-      "documentHint": " Recomendado: PDF, ≤100 MB.",
+      "videoHint": " Recomendado: MP4 / 3GPP, â‰¤16 MB, â‰¤60 segundos.",
+      "documentHint": " Recomendado: PDF, â‰¤100 MB.",
       "bodyText": "Texto do corpo",
       "bodyPlaceholder": "Ola {{1}}, seu pedido {{2}} foi confirmado.",
       "bodyHint": "Use {{1}}, {{2}} para variaveis (devem ser continuas a partir de {{1}}).",
@@ -1473,7 +1473,7 @@
       "lastAttemptFailed": "Ultima tentativa falhou com: ",
       "retryHint": "Informe (or correct) o 2-step PIN abaixo e clique Salvar Configuracao para retry.",
       "noRegistrationHint": "Este numero foi salvo antes do controle de registro existir, ou o registro foi ignorado. Informe o PIN de duas etapas abaixo e clique em Salvar configuracao para assinar eventos.",
-      "diagnosticLastRun": "Diagnenhumstic — last run: ",
+      "diagnosticLastRun": "Diagnenhumstic â€” last run: ",
       "live": "ativo",
       "notLive": "inativo",
       "apiCredentialsTitle": "Credenciais da API",
@@ -1677,7 +1677,7 @@
       "behaviour": "Comportamento",
       "behaviourDesc": "Explique ao assistente sobre seu negocio - produtos, tom de voz, o que ele pode ou nao prometer. Esse contexto alimenta rascunhos e respostas automaticas.",
       "businessContext": "Contexto do negocio e instrucoes",
-      "promptPlaceholder": "ex. We are Acme, a coffee-equipment store. Be warm e concise. Never quote prices ou delivery dates — hand off para a human para those.",
+      "promptPlaceholder": "ex. We are Acme, a coffee-equipment store. Be warm e concise. Never quote prices ou delivery dates â€” hand off para a human para those.",
       "enableAssistant": "Ativar assistente de IA",
       "enableAssistantDesc": "Chave geral. Ativa o botao \"Rascunhar com IA\" na caixa de entrada.",
       "autoReply": "Responder automaticamente mensagens recebidas",
@@ -1685,7 +1685,7 @@
       "maxAutoReplies": "Maximo de respostas automaticas por conversa",
       "maxAutoRepliesDesc": "Depois desse numero de respostas do bot na mesma conversa, ele para de responder.",
       "handoffTo": "Transferir para",
-      "handoffToDesc": "When o bot can’t help — ou hits o resposta cap — it pauses e routes o chat aqui, com a short nenhumte on what happened.",
+      "handoffToDesc": "When o bot canâ€™t help â€” ou hits o resposta cap â€” it pauses e routes o chat aqui, com a short nenhumte on what happened.",
       "handoffQueue": "Fila sem atribuicao (qualquer agente pode assumir)",
       "remove": "Remover",
       "save": "Salvar",
@@ -1720,13 +1720,13 @@
       "editDocTitle": "Titulo",
       "editDocTitlePlaceholder": "ex. Returns & refunds policy",
       "editDocContent": "Conteudo",
-      "editDocContentPlaceholder": "Paste o FAQ answer, policy text, ou product details…",
+      "editDocContentPlaceholder": "Paste o FAQ answer, policy text, ou product detailsâ€¦",
       "cancel": "Cancelar",
       "saveDoc": "Salvar documento",
       "addDoc": "Adicionar documento",
       "reindex": "Reindexar",
       "reindexTooltip": "Reprocessar embeddings de todos os documentos (ex.: depois de adicionar uma chave de embeddings)",
-      "loading": "Carregando…"
+      "loading": "Carregandoâ€¦"
     },
     "quickReplies": {
       "title": "Respostas rapidas",
@@ -1821,3 +1821,4 @@
     }
   }
 }
+
