@@ -200,9 +200,7 @@ export function Sidebar({
             close button is hidden since the sidebar is always-visible. */}
         <div className={cn("flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4", collapsed && "lg:justify-center lg:px-3")}> 
           <Link href="/dashboard" className={cn("flex items-center gap-2", collapsed && "lg:hidden")}> 
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <MessageSquare className="h-4 w-4" />
-            </div>
+            <img src="/icon.png" alt="AutoIA CRM" className="h-8 w-8 rounded-lg object-contain" />
             <span className="text-sm font-semibold text-foreground">
               {t("title")}
             </span>
@@ -424,4 +422,5 @@ export function Sidebar({
     </>
   );
 }
+
 
