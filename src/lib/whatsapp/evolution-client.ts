@@ -259,15 +259,20 @@ export async function sendEvolutionText(args: {
   const path = args.variant === 'go'
     ? '/send/text'
     : `/message/sendText/${encodeURIComponent(args.instanceName)}`
-  const body = args.variant === 'go'
-    ? { number: args.to, text: args.text }
-    : { number: args.to, textMessage: { text: args.text } }
-  const data = await evolutionRequest(args.baseUrl, args.apiKey, path, {
+  const request = (body: Json) => evolutionRequest(args.baseUrl, args.apiKey, path, {
     method: 'POST',
     headers: args.instanceId ? { instanceId: args.instanceId } : undefined,
     body: JSON.stringify(body),
   })
-  return messageId(data)
+  if (args.variant === 'go') {
+    return messageId(await request({ number: args.to, text: args.text }))
+  }
+  try {
+    return messageId(await request({ number: args.to, textMessage: { text: args.text } }))
+  } catch (error) {
+    if (!(error instanceof EvolutionRequestError) || error.status !== 400) throw error
+    return messageId(await request({ number: args.to, text: args.text }))
+  }
 }
 
 export async function sendEvolutionMedia(args: {

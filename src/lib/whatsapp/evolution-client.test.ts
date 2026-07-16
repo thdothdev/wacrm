@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createEvolutionInstance,
   normalizeEvolutionBaseUrl,
+  sendEvolutionText,
   setEvolutionWebhook,
 } from './evolution-client'
 
@@ -67,6 +68,23 @@ describe('Evolution client', () => {
     })
     const goRequest = fetchMock.mock.calls[1][1] as RequestInit
     expect(JSON.parse(String(goRequest.body))).toEqual({ name: 'autoia' })
+  })
+  it('retries the flat text payload when the documented payload returns 400', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('Bad Request', { status: 400 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ key: { id: 'msg-1' } }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(sendEvolutionText({
+      baseUrl: 'https://evolution.example.com',
+      apiKey: 'global-key',
+      instanceName: 'autoia',
+      to: '558181587312',
+      text: 'Oi',
+    })).resolves.toBe('msg-1')
+
+    const retry = fetchMock.mock.calls[1][1] as RequestInit
+    expect(JSON.parse(String(retry.body))).toEqual({ number: '558181587312', text: 'Oi' })
   })
   it('retries the legacy nested webhook payload after a 400', async () => {
     const fetchMock = vi.fn()
