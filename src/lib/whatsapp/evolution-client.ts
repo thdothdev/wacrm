@@ -4,8 +4,8 @@ const V2_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE']
 export type EvolutionVariant = 'v2' | 'go'
 type Json = Record<string, unknown>
 
-class EvolutionRequestError extends Error {
-  constructor(message: string, readonly status: number) {
+export class EvolutionRequestError extends Error {
+  constructor(message: string, readonly status: number, readonly endpoint: string) {
     super(message)
   }
 }
@@ -49,7 +49,7 @@ async function evolutionRequest(
     data = { message: raw }
   }
   if (!response.ok) {
-    throw new EvolutionRequestError(responseMessage(data, raw, response.status), response.status)
+    throw new EvolutionRequestError(`${init.method || 'GET'} ${path}: ${responseMessage(data, raw, response.status)}`, response.status, path)
   }
   return data
 }

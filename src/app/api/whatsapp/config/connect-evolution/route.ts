@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/flows/admin-client'
 import { decrypt, encrypt } from '@/lib/whatsapp/encryption'
 import {
   connectEvolutionInstance,
+  EvolutionRequestError,
   createEvolutionInstance,
   getEvolutionConnectionState,
   isEvolutionConnected,
@@ -197,6 +198,14 @@ export async function POST(request: Request) {
       webhookConfigured: true,
     })
   } catch (error) {
+    if (error instanceof EvolutionRequestError) {
+      console.error('[evolution/config] Evolution request failed:', {
+        endpoint: error.endpoint,
+        status: error.status,
+        message: error.message,
+      })
+      return NextResponse.json({ error: error.message }, { status: 502 })
+    }
     if (error instanceof Error && !('status' in error)) {
       console.error('[evolution/config] connection failed:', error)
       return NextResponse.json({ error: error.message }, { status: 400 })
