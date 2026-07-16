@@ -1,10 +1,30 @@
 import { isIP } from 'node:net'
-const EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE']
 
+const V2_EVENTS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE']
+export type EvolutionVariant = 'v2' | 'go'
 type Json = Record<string, unknown>
+
+class EvolutionRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+  }
+}
 
 function url(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, '')}${path}`
+}
+
+function responseMessage(data: Json, raw: string, status: number) {
+  const error = data.error
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && !Array.isArray(error)) {
+    const message = (error as Json).message
+    if (message) return String(message)
+  }
+  if (Array.isArray(error) && error.length) return error.map(String).join(', ')
+  if (data.message) return String(data.message)
+  if (raw) return raw.slice(0, 500)
+  return `Evolution API error (${status})`
 }
 
 async function evolutionRequest(
@@ -29,10 +49,7 @@ async function evolutionRequest(
     data = { message: raw }
   }
   if (!response.ok) {
-    const error = data.error as Json | undefined
-    throw new Error(
-      String(error?.message || data.message || `Evolution API error (${response.status})`),
-    )
+    throw new EvolutionRequestError(responseMessage(data, raw, response.status), response.status)
   }
   return data
 }
@@ -40,13 +57,13 @@ async function evolutionRequest(
 export function normalizeEvolutionBaseUrl(value: string) {
   const parsed = new URL(value.trim())
   if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('A URL deve começar com http:// ou https://')
+    throw new Error('A URL deve comecar com http:// ou https://')
   }
   if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
-    throw new Error('Em produção, a Evolution precisa usar HTTPS')
+    throw new Error('Em producao, a Evolution precisa usar HTTPS')
   }
   if (parsed.username || parsed.password) {
-    throw new Error('A URL não pode conter usuário ou senha')
+    throw new Error('A URL nao pode conter usuario ou senha')
   }
 
   const hostname = parsed.hostname.toLowerCase()
@@ -62,7 +79,7 @@ export function normalizeEvolutionBaseUrl(value: string) {
     isIP(hostname) === 6 &&
     (hostname === '::1' || hostname.startsWith('fc') || hostname.startsWith('fd') || hostname.startsWith('fe80'))
   if (hostname === 'localhost' || hostname.endsWith('.local') || privateIpv4 || privateIpv6) {
-    throw new Error('Use uma URL pública para o servidor Evolution')
+    throw new Error('Use uma URL publica para o servidor Evolution')
   }
 
   return parsed.origin + parsed.pathname.replace(/\/$/, '')
@@ -73,32 +90,71 @@ function qrDataUrl(value: unknown) {
   if (!qr) return null
   return qr.startsWith('data:') ? qr : `data:image/png;base64,${qr}`
 }
+
 export function isEvolutionConnected(state: unknown) {
-  return String(state).toLowerCase() === 'open'
+  return ['open', 'connected', 'true'].includes(String(state).toLowerCase())
 }
 
 export async function createEvolutionInstance(args: {
   baseUrl: string
   apiKey: string
   instanceName: string
-}) {
+}): Promise<{
+  variant: EvolutionVariant
+  qrcode: string | null
+  apiKey: string
+  instanceId: string | null
+}> {
+  try {
+    const data = await evolutionRequest(args.baseUrl, args.apiKey, '/instance/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        instanceName: args.instanceName,
+        qrcode: true,
+        integration: 'WHATSAPP-BAILEYS',
+      }),
+    })
+    const qrcode = data.qrcode as Json | undefined
+    const instance = data.instance as Json | undefined
+    return {
+      variant: 'v2',
+      qrcode: qrDataUrl(qrcode?.base64 || data.base64),
+      apiKey: args.apiKey,
+      instanceId: String(instance?.instanceId || '') || null,
+    }
+  } catch (error) {
+    if (!(error instanceof EvolutionRequestError) || error.status !== 400) throw error
+  }
+
   const data = await evolutionRequest(args.baseUrl, args.apiKey, '/instance/create', {
     method: 'POST',
-    body: JSON.stringify({
-      instanceName: args.instanceName,
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS',
-    }),
+    body: JSON.stringify({ name: args.instanceName }),
   })
-  const qrcode = data.qrcode as Json | undefined
-  return qrDataUrl(qrcode?.base64 || data.base64)
+  const instance = (data.data as Json | undefined) || data
+  const instanceApiKey = String(instance.token || '')
+  if (!instanceApiKey) throw new Error('Evolution Go criou a instancia sem retornar o token')
+  return {
+    variant: 'go',
+    qrcode: qrDataUrl(instance.qrcode),
+    apiKey: instanceApiKey,
+    instanceId: String(instance.id || '') || null,
+  }
 }
 
 export async function connectEvolutionInstance(args: {
   baseUrl: string
   apiKey: string
   instanceName: string
+  variant?: EvolutionVariant
+  instanceId?: string | null
 }) {
+  if (args.variant === 'go') {
+    const data = await evolutionRequest(args.baseUrl, args.apiKey, '/instance/qr', {
+      headers: args.instanceId ? { instanceId: args.instanceId } : undefined,
+    })
+    const payload = (data.data as Json | undefined) || data
+    return qrDataUrl(payload.Qrcode || payload.qrcode || data.base64)
+  }
   const data = await evolutionRequest(
     args.baseUrl,
     args.apiKey,
@@ -111,7 +167,16 @@ export async function getEvolutionConnectionState(args: {
   baseUrl: string
   apiKey: string
   instanceName: string
+  variant?: EvolutionVariant
+  instanceId?: string | null
 }) {
+  if (args.variant === 'go') {
+    const data = await evolutionRequest(args.baseUrl, args.apiKey, '/instance/status', {
+      headers: args.instanceId ? { instanceId: args.instanceId } : undefined,
+    })
+    const payload = (data.data as Json | undefined) || data
+    return payload.Connected === true || payload.connected === true ? 'open' : 'close'
+  }
   const data = await evolutionRequest(
     args.baseUrl,
     args.apiKey,
@@ -127,7 +192,23 @@ export async function setEvolutionWebhook(args: {
   instanceName: string
   webhookUrl: string
   webhookSecret: string
+  variant?: EvolutionVariant
+  instanceId?: string | null
 }) {
+  if (args.variant === 'go') {
+    const webhookUrl = new URL(args.webhookUrl)
+    webhookUrl.searchParams.set('evolution_token', args.webhookSecret)
+    await evolutionRequest(args.baseUrl, args.apiKey, '/instance/connect', {
+      method: 'POST',
+      headers: args.instanceId ? { instanceId: args.instanceId } : undefined,
+      body: JSON.stringify({
+        immediate: true,
+        webhookUrl: webhookUrl.toString(),
+        subscribe: ['MESSAGE', 'SEND_MESSAGE', 'READ_RECEIPT', 'CONNECTION', 'QRCODE'],
+      }),
+    })
+    return
+  }
   await evolutionRequest(
     args.baseUrl,
     args.apiKey,
@@ -137,7 +218,7 @@ export async function setEvolutionWebhook(args: {
       body: JSON.stringify({
         enabled: true,
         url: args.webhookUrl,
-        events: EVENTS,
+        events: V2_EVENTS,
         headers: { 'x-autoia-webhook-token': args.webhookSecret },
         base64: true,
       }),
@@ -147,7 +228,9 @@ export async function setEvolutionWebhook(args: {
 
 function messageId(data: Json) {
   const key = data.key as Json | undefined
-  return String(key?.id || data.messageId || data.id || '')
+  const payload = data.data as Json | undefined
+  const info = payload?.Info as Json | undefined
+  return String(key?.id || info?.ID || data.messageId || data.id || '')
 }
 
 export async function sendEvolutionText(args: {
@@ -156,16 +239,20 @@ export async function sendEvolutionText(args: {
   instanceName: string
   to: string
   text: string
+  variant?: EvolutionVariant
+  instanceId?: string | null
 }) {
-  const data = await evolutionRequest(
-    args.baseUrl,
-    args.apiKey,
-    `/message/sendText/${encodeURIComponent(args.instanceName)}`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ number: args.to, textMessage: { text: args.text } }),
-    },
-  )
+  const path = args.variant === 'go'
+    ? '/send/text'
+    : `/message/sendText/${encodeURIComponent(args.instanceName)}`
+  const body = args.variant === 'go'
+    ? { number: args.to, text: args.text }
+    : { number: args.to, textMessage: { text: args.text } }
+  const data = await evolutionRequest(args.baseUrl, args.apiKey, path, {
+    method: 'POST',
+    headers: args.instanceId ? { instanceId: args.instanceId } : undefined,
+    body: JSON.stringify(body),
+  })
   return messageId(data)
 }
 
@@ -178,10 +265,26 @@ export async function sendEvolutionMedia(args: {
   mediaUrl: string
   caption?: string
   filename?: string
+  variant?: EvolutionVariant
+  instanceId?: string | null
 }) {
-  const mediaResponse = await fetch(args.mediaUrl)
-  if (!mediaResponse.ok) throw new Error('Não foi possível baixar o arquivo para envio')
+  if (args.variant === 'go') {
+    const data = await evolutionRequest(args.baseUrl, args.apiKey, '/send/media', {
+      method: 'POST',
+      headers: args.instanceId ? { instanceId: args.instanceId } : undefined,
+      body: JSON.stringify({
+        number: args.to,
+        type: args.kind,
+        url: args.mediaUrl,
+        caption: args.caption,
+        filename: args.filename,
+      }),
+    })
+    return messageId(data)
+  }
 
+  const mediaResponse = await fetch(args.mediaUrl)
+  if (!mediaResponse.ok) throw new Error('Nao foi possivel baixar o arquivo para envio')
   const form = new FormData()
   form.append('number', args.to)
   form.append('mediatype', args.kind)

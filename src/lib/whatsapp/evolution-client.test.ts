@@ -27,7 +27,7 @@ describe('Evolution client', () => {
       instanceName: 'autoia',
     })
 
-    expect(qr).toBe('data:image/png;base64,abc123')
+    expect(qr).toMatchObject({ variant: 'v2', qrcode: 'data:image/png;base64,abc123' })
     expect(fetchMock).toHaveBeenCalledWith(
       'https://evolution.example.com/instance/create',
       expect.objectContaining({
@@ -43,6 +43,31 @@ describe('Evolution client', () => {
     })
   })
 
+  it('falls back to Evolution Go when the v2 payload is rejected', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ error: { message: 'Instance information is required' } }),
+        { status: 400 },
+      ))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: { id: 'go-id', name: 'autoia', token: 'instance-token' },
+      }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const created = await createEvolutionInstance({
+      baseUrl: 'https://evolution.example.com',
+      apiKey: 'global-key',
+      instanceName: 'autoia',
+    })
+
+    expect(created).toMatchObject({
+      variant: 'go',
+      apiKey: 'instance-token',
+      instanceId: 'go-id',
+    })
+    const goRequest = fetchMock.mock.calls[1][1] as RequestInit
+    expect(JSON.parse(String(goRequest.body))).toEqual({ name: 'autoia' })
+  })
   it('configures the account webhook with its secret header', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)

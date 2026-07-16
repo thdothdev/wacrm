@@ -211,11 +211,15 @@ export async function POST(request: Request) {
     if (!instanceName) {
       return NextResponse.json({ error: 'Missing Evolution instance' }, { status: 401 })
     }
-    const { data: configs, error } = await supabaseAdmin()
+    let configQuery = supabaseAdmin()
       .from('whatsapp_config')
       .select('account_id, user_id, evolution_webhook_secret')
       .eq('provider', 'evolution')
-      .eq('evolution_instance_name', instanceName)
+    const goInstanceId = getString(getRecord(body), ['instanceId'])
+    configQuery = goInstanceId
+      ? configQuery.eq('instance_id', goInstanceId)
+      : configQuery.eq('evolution_instance_name', instanceName)
+    const { data: configs, error } = await configQuery
     if (error || !configs?.length) {
       console.warn('[webhook] rejected unknown Evolution instance:', instanceName)
       return NextResponse.json({ error: 'Unknown Evolution instance' }, { status: 401 })
@@ -289,7 +293,10 @@ export async function POST(request: Request) {
 function getEvolutionInstanceName(body: unknown): string | undefined {
   const record = getRecord(body)
   const instance = getRecord(record?.instance)
-  return getString(record, ['instance', 'instanceName']) || getString(instance, ['name', 'instanceName'])
+  return (
+    getString(record, ['instance', 'instanceName', 'instanceId']) ||
+    getString(instance, ['name', 'instanceName', 'id'])
+  )
 }
 
 function isEvolutionWebhookBody(body: unknown): boolean {
@@ -298,7 +305,10 @@ function isEvolutionWebhookBody(body: unknown): boolean {
   return Boolean(
     getEvolutionInstanceName(body) &&
       event &&
-      ['messages.upsert', 'messages.update', 'connection.update'].includes(event),
+      [
+        'messages.upsert', 'messages.update', 'connection.update',
+        'message', 'receipt', 'connected', 'loggedout', 'pairsuccess', 'qrcode',
+      ].includes(event),
   )
 }
 function isUazapiWebhookBody(body: unknown): boolean {
@@ -421,6 +431,40 @@ async function processEvolutionWebhook(
   const data = Array.isArray(body.data) ? getRecord(body.data[0]) : rawData
   if (!event || !instanceName || !data) return
 
+  if (['connected', 'pairsuccess', 'loggedout'].includes(event)) {
+    const connected = event !== 'loggedout'
+    await supabaseAdmin()
+      .from('whatsapp_config')
+      .update({
+        connection_state: connected ? 'connected' : 'disconnected',
+        status: connected ? 'connected' : 'disconnected',
+        connected_at: connected ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('account_id', config.account_id)
+    return
+  }
+
+  if (event === 'receipt') {
+    const ids = getRecordValue(data, ['MessageIDs', 'messageIds'])
+    const state = getString(body, ['state']) || getString(data, ['Type', 'type']) || 'sent'
+    if (Array.isArray(ids)) {
+      for (const id of ids) {
+        await handleStatusUpdate({
+          id: String(id),
+          status: mapEvolutionStatus(state),
+          timestamp: normalizeWebhookTimestamp(getRecordValue(data, ['Timestamp', 'timestamp'])),
+          recipient_id: '',
+        })
+      }
+    }
+    return
+  }
+
+  if (event === 'message') {
+    await processEvolutionGoMessage(data, config)
+    return
+  }
 
   if (event === 'connection.update') {
     const state = getString(data, ['state', 'status']) || 'close'
@@ -506,8 +550,65 @@ async function processEvolutionWebhook(
   )
 }
 
+async function processEvolutionGoMessage(
+  data: Record<string, unknown>,
+  config: { account_id: string; user_id: string },
+) {
+  const info = getRecord(data.Info) || getRecord(data.info)
+  if (!info || info.IsFromMe === true || info.IsGroup === true) return
+
+  const remoteJid = getString(info, ['Chat', 'Sender', 'chat', 'sender'])
+  const messageId = getString(info, ['ID', 'id'])
+  if (!remoteJid || !messageId || /@(g\.us|broadcast|newsletter)$/.test(remoteJid)) return
+
+  const payload = getRecord(data.Message) || getRecord(data.message) || {}
+  const payloadKey = Object.keys(payload)[0] || 'conversation'
+  const content = getRecord(payload[payloadKey])
+  const declaredType = getString(info, ['MediaType', 'mediaType']) || payloadKey.replace(/Message$/i, '')
+  const normalizedType = getUazapiMessageType(declaredType.toLowerCase())
+  const text =
+    getString(payload, ['conversation']) ||
+    getString(content, ['text', 'caption']) ||
+    getUazapiMessageText({ message: payload })
+  const mimeType = getString(content, ['mimetype', 'mime_type']) || 'application/octet-stream'
+  const filename = getString(content, ['fileName', 'filename'])
+  const rawMedia = getString(data, ['base64', 'mediaUrl', 'media_url'])
+  const mediaUrl = rawMedia
+    ? rawMedia.startsWith('data:') || /^https?:\/\//i.test(rawMedia)
+      ? rawMedia
+      : `data:${mimeType};base64,${rawMedia}`
+    : undefined
+
+  const message: WhatsAppMessage = {
+    id: messageId,
+    from: remoteJid,
+    timestamp: normalizeWebhookTimestamp(getRecordValue(info, ['Timestamp', 'timestamp'])),
+    type: normalizedType,
+    text: text ? { body: text } : undefined,
+    media_url: mediaUrl,
+  }
+  if (normalizedType === 'image') {
+    message.image = { id: messageId, mime_type: mimeType, caption: text }
+  } else if (normalizedType === 'video') {
+    message.video = { id: messageId, mime_type: mimeType, caption: text }
+  } else if (normalizedType === 'document') {
+    message.document = { id: messageId, mime_type: mimeType, filename, caption: text }
+  } else if (normalizedType === 'audio') {
+    message.audio = { id: messageId, mime_type: mimeType }
+  }
+
+  const phone = remoteJid.split('@')[0].split(':')[0]
+  await processMessage(
+    message,
+    { profile: { name: getString(info, ['PushName', 'pushName']) || phone }, wa_id: phone },
+    config.account_id,
+    config.user_id,
+    '',
+  )
+}
 function normalizeWebhookTimestamp(value: unknown): string {
-  const numeric = Number(value) || Date.now()
+  const parsedDate = typeof value === 'string' ? Date.parse(value) : NaN
+  const numeric = Number.isNaN(parsedDate) ? Number(value) || Date.now() : parsedDate
   return Math.floor(numeric > 10_000_000_000 ? numeric / 1000 : numeric).toString()
 }
 

@@ -10,6 +10,7 @@ import {
   isEvolutionConnected,
   normalizeEvolutionBaseUrl,
   setEvolutionWebhook,
+  type EvolutionVariant,
 } from '@/lib/whatsapp/evolution-client'
 
 const INSTANCE_NAME = /^[A-Za-z0-9_-]{2,64}$/
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
     const { data: existing } = await supabase
       .from('whatsapp_config')
-      .select('id, provider, access_token, evolution_base_url, evolution_instance_name, evolution_webhook_secret')
+      .select('id, provider, phone_number_id, access_token, instance_id, evolution_base_url, evolution_instance_name, evolution_webhook_secret')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -84,51 +85,81 @@ export async function POST(request: Request) {
 
     let state = 'close'
     let qrcode: string | null = null
+    let variant: EvolutionVariant = existing?.phone_number_id?.startsWith('evolution-go:') ? 'go' : 'v2'
+    let credential = apiKey
+    let instanceId = existing?.instance_id || null
+
     if (sameInstance) {
-      state = await getEvolutionConnectionState({ baseUrl, apiKey, instanceName })
-      if (!isEvolutionConnected(state)) {
-        qrcode = await connectEvolutionInstance({ baseUrl, apiKey, instanceName })
-      }
+      state = await getEvolutionConnectionState({
+        baseUrl,
+        apiKey: credential,
+        instanceName,
+        variant,
+        instanceId,
+      })
     } else {
       try {
-        qrcode = await createEvolutionInstance({ baseUrl, apiKey, instanceName })
+        const created = await createEvolutionInstance({ baseUrl, apiKey, instanceName })
+        variant = created.variant
+        credential = created.apiKey
+        instanceId = created.instanceId
+        qrcode = created.qrcode
       } catch (error) {
-        // Reuse an instance that already exists on this Evolution server.
-        console.info('[evolution/config] create skipped; trying existing instance:', error)
-        state = await getEvolutionConnectionState({ baseUrl, apiKey, instanceName })
-        if (!isEvolutionConnected(state)) {
-          qrcode = await connectEvolutionInstance({ baseUrl, apiKey, instanceName })
-        }
+        // Evolution API v2 can return an error when the instance already exists.
+        console.info('[evolution/config] create skipped; trying existing v2 instance:', error)
+        variant = 'v2'
+        state = await getEvolutionConnectionState({
+          baseUrl,
+          apiKey,
+          instanceName,
+          variant,
+        })
       }
     }
 
     await setEvolutionWebhook({
       baseUrl,
-      apiKey,
+      apiKey: credential,
       instanceName,
       webhookUrl,
       webhookSecret,
+      variant,
+      instanceId,
     })
 
-    if (!sameInstance && state === 'close') {
+    if (state === 'close') {
       try {
-        state = await getEvolutionConnectionState({ baseUrl, apiKey, instanceName })
+        state = await getEvolutionConnectionState({
+          baseUrl,
+          apiKey: credential,
+          instanceName,
+          variant,
+          instanceId,
+        })
       } catch (error) {
         console.warn('[evolution/config] state not available immediately after creation:', error)
       }
     }
-    const connected = isEvolutionConnected(state)
+    if (!isEvolutionConnected(state) && !qrcode) {
+      qrcode = await connectEvolutionInstance({
+        baseUrl,
+        apiKey: credential,
+        instanceName,
+        variant,
+        instanceId,
+      })
+    }    const connected = isEvolutionConnected(state)
     const now = new Date().toISOString()
     const row = {
       provider: 'evolution',
-      phone_number_id: `evolution:${createHash('sha256')
+      phone_number_id: `evolution${variant === 'go' ? '-go' : ''}:${createHash('sha256')
         .update(`${baseUrl}:${instanceName}`)
         .digest('hex')
         .slice(0, 24)}`,
       waba_id: null,
-      access_token: encrypt(apiKey),
+      access_token: encrypt(credential),
       verify_token: null,
-      instance_id: null,
+      instance_id: instanceId,
       instance_token: null,
       uazapi_base_url: null,
       evolution_base_url: baseUrl,
@@ -162,6 +193,7 @@ export async function POST(request: Request) {
       state,
       qrcode,
       instanceName,
+      variant,
       webhookConfigured: true,
     })
   } catch (error) {

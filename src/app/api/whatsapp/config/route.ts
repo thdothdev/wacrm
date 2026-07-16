@@ -89,7 +89,7 @@ export async function GET() {
 
     const { data: config, error: configError } = await supabase
       .from('whatsapp_config')
-      .select('provider, phone_number_id, access_token, instance_token, uazapi_base_url, evolution_base_url, evolution_instance_name, connection_state, status')
+      .select('provider, phone_number_id, access_token, instance_id, instance_token, uazapi_base_url, evolution_base_url, evolution_instance_name, connection_state, status')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -124,6 +124,8 @@ export async function GET() {
           baseUrl: config.evolution_base_url,
           apiKey,
           instanceName: config.evolution_instance_name,
+          variant: config.phone_number_id.startsWith('evolution-go:') ? 'go' : 'v2',
+          instanceId: config.instance_id,
         })
         return NextResponse.json({
           connected: isEvolutionConnected(state),
