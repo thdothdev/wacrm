@@ -85,6 +85,8 @@ export default function CalendarPage() {
   }, [accountId, date, range, status, assignee]);
 
   useEffect(() => {
+    // This effect syncs the selected filters with Supabase.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 

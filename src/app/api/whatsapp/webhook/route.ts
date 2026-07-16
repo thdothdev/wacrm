@@ -1,7 +1,7 @@
 import { NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption'
-import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
+import { getMediaUrl } from '@/lib/whatsapp/meta-api'
 import { normalizePhone } from '@/lib/whatsapp/phone-utils'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import {
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
 
   // Try to determine which API format this is:
   // - Meta uses x-hub-signature-256 header
-  // - uazapi may use Authorization header, or no custom header at all.
+  // - uazapi uses the Authorization header configured in UAZAPI_WEBHOOK_TOKEN.
   const isMetaFormat = signature !== null
   const isUazapiFormat = !isMetaFormat
 
@@ -201,13 +201,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
   } else if (isUazapiFormat) {
-    if (authorization === null && !isUazapiWebhookBody(body)) {
+    if (!isUazapiWebhookBody(body)) {
       console.warn(
-        '[webhook] accepting non-Meta JSON as uazapi; payload keys:',
-        describePayloadKeys(body)
+        '[webhook] rejected request with no recognized provider payload; payload keys:',
+        describePayloadKeys(body),
       )
+      return NextResponse.json({ error: 'Missing verification' }, { status: 401 })
     }
-    console.log('[webhook] uazapi webhook accepted (validation via IP/URL secrecy)')
+    if (!verifyUazapiWebhookSignature(authorization)) {
+      console.warn('[webhook] rejected uazapi request with invalid authorization header')
+      return NextResponse.json({ error: 'Invalid authorization' }, { status: 401 })
+    }
+    console.log('[webhook] uazapi webhook accepted')
   } else {
     console.warn('[webhook] rejected request with no recognized provider payload')
     return NextResponse.json({ error: 'Missing verification' }, { status: 401 })

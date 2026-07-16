@@ -18,12 +18,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("wacrm:sidebar-collapsed") === "true",
+  );
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
-
-  useEffect(() => {
-    setSidebarCollapsed(localStorage.getItem("wacrm:sidebar-collapsed") === "true");
-  }, []);
 
   const toggleSidebarCollapsed = useCallback(() => {
     setSidebarCollapsed((current) => {

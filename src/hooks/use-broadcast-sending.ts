@@ -158,7 +158,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     let contacts: Contact[] = [];
 
     if (audience.type === 'all') {
-      const { data, error } = await supabase.from('contacts').select('*');
+      const { data, error } = await supabase.from('contacts').select('id, user_id, account_id, phone, phone_normalized, name, email, company, avatar_url, name_source, created_at, updated_at');
       if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
       contacts = data ?? [];
     } else if (
@@ -179,8 +179,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
           ...new Set(contactTags.map((ct) => ct.contact_id)),
         ];
         const { data, error } = await supabase
-          .from('contacts')
-          .select('*')
+          .from('contacts').select('id, user_id, account_id, phone, phone_normalized, name, email, company, avatar_url, name_source, created_at, updated_at')
           .in('id', uniqueContactIds);
         if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
         contacts = data ?? [];
@@ -242,8 +241,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
 
     // Single round-trip lookup of existing contacts by phone.
     const { data: existing, error: lookupErr } = await supabase
-      .from('contacts')
-      .select('*')
+      .from('contacts').select('id, user_id, account_id, phone, phone_normalized, name, email, company, avatar_url, name_source, created_at, updated_at')
       .eq('user_id', user.id)
       .in('phone', phones);
     if (lookupErr) {
@@ -272,7 +270,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
       const { data: inserted, error: insertErr } = await supabase
         .from('contacts')
         .insert(chunk)
-        .select();
+        .select('id, user_id, account_id, phone, phone_normalized, name, email, company, avatar_url, name_source, created_at, updated_at');
       if (insertErr) {
         throw new Error(`Failed to create CSV contacts: ${insertErr.message}`);
       }
@@ -313,8 +311,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     if (contactIds.length === 0) return [];
 
     const { data, error } = await supabase
-      .from('contacts')
-      .select('*')
+      .from('contacts').select('id, user_id, account_id, phone, phone_normalized, name, email, company, avatar_url, name_source, created_at, updated_at')
       .in('id', contactIds);
     if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
     return data ?? [];

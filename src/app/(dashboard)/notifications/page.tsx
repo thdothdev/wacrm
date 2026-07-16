@@ -51,7 +51,9 @@ export default function NotificationsPage() {
   }, [accountId]);
 
   useEffect(() => {
-    load();
+    // This effect syncs the page with Supabase notifications.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
   }, [load]);
 
   useEffect(() => {

@@ -70,6 +70,7 @@ export function ScheduleEventDialog({
   const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [members, setMembers] = useState<AccountMember[]>([]);
   const [saving, setSaving] = useState(false);
+  const userId = user?.id;
 
   const fixedContact = Boolean(contact?.id);
   const selectedContact = useMemo(
@@ -79,12 +80,14 @@ export function ScheduleEventDialog({
 
   useEffect(() => {
     if (!open) return;
+    // Reset the form each time the modal opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTitle(defaultTitle);
     setNote(defaultNote);
     setStartsAt(localDateTimeValue());
-    setAssignedTo(user?.id ?? NONE);
+    setAssignedTo(userId ?? NONE);
     setContactId(contact?.id ?? "");
-  }, [open, defaultTitle, defaultNote, user?.id, contact?.id]);
+  }, [open, defaultTitle, defaultNote, userId, contact?.id]);
 
   useEffect(() => {
     if (!open || fixedContact || !accountId) return;
@@ -104,7 +107,7 @@ export function ScheduleEventDialog({
   }, [open]);
 
   const save = useCallback(async () => {
-    if (!accountId || !user?.id) return;
+    if (!accountId || !userId) return;
     if (!title.trim()) return toast.error("Informe um titulo.");
     if (!contactId) return toast.error("Selecione um contato.");
     if (!startsAt) return toast.error("Informe data e hora.");
@@ -113,7 +116,7 @@ export function ScheduleEventDialog({
     const supabase = createClient();
     const { error } = await supabase.from("calendar_events").insert({
       account_id: accountId,
-      user_id: user.id,
+      user_id: userId,
       assigned_to: assignedTo === NONE ? null : assignedTo,
       contact_id: contactId,
       conversation_id: conversationId ?? null,
@@ -131,7 +134,7 @@ export function ScheduleEventDialog({
     toast.success("Agendamento criado.");
     onSaved?.();
     onOpenChange(false);
-  }, [accountId, user?.id, title, contactId, startsAt, assignedTo, conversationId, note, aiSuggested, onSaved, onOpenChange]);
+  }, [accountId, userId, title, contactId, startsAt, assignedTo, conversationId, note, aiSuggested, onSaved, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

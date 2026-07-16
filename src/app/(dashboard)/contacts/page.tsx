@@ -104,7 +104,7 @@ export default function ContactsPage() {
   const fetchSeq = useRef(0);
 
   const fetchTags = useCallback(async () => {
-    const { data } = await supabase.from('tags').select('*');
+    const { data } = await supabase.from('tags').select('id, user_id, name, color, created_at');
     if (data) {
       const map: Record<string, Tag> = {};
       data.forEach((t) => (map[t.id] = t));
@@ -156,7 +156,7 @@ export default function ContactsPage() {
     } else {
       let query = supabase
         .from('contacts')
-        .select('*', { count: 'exact' })
+        .select('id, user_id, account_id, phone, phone_normalized, name, email, company, avatar_url, name_source, created_at, updated_at', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -232,7 +232,7 @@ export default function ContactsPage() {
   async function openEditForm(contact: Contact) {
     const { data } = await supabase
       .from('contact_tags')
-      .select('*')
+      .select('id, contact_id, tag_id')
       .eq('contact_id', contact.id);
     setEditContact(contact);
     setEditContactTags(data ?? []);

@@ -113,7 +113,7 @@ export function WhatsAppConfig() {
       // remains accurate.
       const { data, error } = await supabase
         .from('whatsapp_config')
-        .select('*')
+        .select('id, user_id, phone_number_id, waba_id, access_token, verify_token, instance_id, instance_token, uazapi_base_url, connection_state, status, connected_at, registered_at, subscribed_apps_at, last_registration_error')
         .eq('account_id', acctId)
         .maybeSingle();
 
@@ -1028,7 +1028,7 @@ export function WhatsAppConfig() {
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>Configure na uazapi esta URL de webhook:</p>
               <code className="block rounded-md bg-muted p-2 text-xs text-foreground break-all">{webhookUrl}</code>
-              <p>Nao precisa adicionar header Bearer. Depois envie uma mensagem para o numero conectado e veja se ela aparece na caixa de entrada.</p>
+              <p>Configure o header <code>Authorization: Bearer UAZAPI_WEBHOOK_TOKEN</code>. Depois envie uma mensagem para o numero conectado e veja se ela aparece na caixa de entrada.</p>
             </CardContent>
           </Card>
         ) : (

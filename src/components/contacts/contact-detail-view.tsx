@@ -105,7 +105,7 @@ export function ContactDetailView({
 
     const { data } = await supabase
       .from('contacts')
-      .select('*')
+      .select('id, user_id, account_id, phone, phone_normalized, name, email, company, avatar_url, name_source, created_at, updated_at')
       .eq('id', contactId)
       .single();
 
@@ -123,7 +123,7 @@ export function ContactDetailView({
     if (!contactId) return;
 
     const [tagsRes, contactTagsRes] = await Promise.all([
-      supabase.from('tags').select('*').order('name'),
+      supabase.from('tags').select('id, user_id, name, color, created_at').order('name'),
       supabase.from('contact_tags').select('tag_id').eq('contact_id', contactId),
     ]);
 
@@ -139,7 +139,7 @@ export function ContactDetailView({
 
     const { data } = await supabase
       .from('contact_notes')
-      .select('*')
+      .select('id, contact_id, user_id, note_text, created_at')
       .eq('contact_id', contactId)
       .order('created_at', { ascending: false });
 
@@ -152,10 +152,10 @@ export function ContactDetailView({
     setLoadingCustom(true);
 
     const [fieldsRes, valuesRes] = await Promise.all([
-      supabase.from('custom_fields').select('*').order('field_name'),
+      supabase.from('custom_fields').select('id, user_id, account_id, field_name, field_type, field_options, created_at').order('field_name'),
       supabase
         .from('contact_custom_values')
-        .select('*')
+        .select('id, contact_id, custom_field_id, value')
         .eq('contact_id', contactId),
     ]);
 
