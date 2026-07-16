@@ -1,4 +1,4 @@
-﻿import type { AccountRole } from "@/lib/auth/roles";
+import type { AccountRole } from "@/lib/auth/roles";
 import type { InteractiveMessagePayload } from "@/lib/whatsapp/interactive";
 
 export type {
@@ -295,6 +295,7 @@ export interface MessageReaction {
 }
 
 export interface WhatsAppConfig {
+  provider?: 'meta' | 'uazapi' | 'evolution';
   id: string;
   user_id: string;
   phone_number_id: string;
@@ -304,6 +305,8 @@ export interface WhatsAppConfig {
   instance_id?: string;
   instance_token?: string;
   uazapi_base_url?: string;
+  evolution_base_url?: string;
+  evolution_instance_name?: string;
   connection_state?: 'disconnected' | 'connecting' | 'connected' | 'hibernated';
   status: 'connected' | 'disconnected';
   connected_at?: string;

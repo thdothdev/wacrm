@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { verifyMetaWebhookSignature } from "./webhook-signature";
+import { verifyEvolutionWebhookSignature, verifyMetaWebhookSignature, verifyUazapiWebhookSignature } from "./webhook-signature";
 
 const SECRET = process.env.META_APP_SECRET!;
 
@@ -65,5 +65,37 @@ describe("verifyMetaWebhookSignature", () => {
       const header = signedHeader(body, originalSecret!);
       expect(verifyMetaWebhookSignature(body, header)).toBe(false);
     });
+  });
+});
+
+describe("verifyUazapiWebhookSignature", () => {
+  const originalToken = process.env.UAZAPI_WEBHOOK_TOKEN;
+
+  beforeEach(() => {
+    process.env.UAZAPI_WEBHOOK_TOKEN = "secret-url-token";
+  });
+
+  afterEach(() => {
+    process.env.UAZAPI_WEBHOOK_TOKEN = originalToken;
+  });
+
+  it("accepts the UAZAPI token from the webhook URL", () => {
+    expect(verifyUazapiWebhookSignature(null, "secret-url-token")).toBe(true);
+  });
+
+  it("keeps accepting bearer tokens for API-created webhooks", () => {
+    expect(verifyUazapiWebhookSignature("Bearer secret-url-token")).toBe(true);
+  });
+
+  it("rejects a wrong UAZAPI token", () => {
+    expect(verifyUazapiWebhookSignature(null, "wrong")).toBe(false);
+  });
+});
+
+describe("verifyEvolutionWebhookSignature", () => {
+  it("accepts only the per-instance webhook token", () => {
+    expect(verifyEvolutionWebhookSignature("instance-secret", "instance-secret")).toBe(true);
+    expect(verifyEvolutionWebhookSignature("wrong", "instance-secret")).toBe(false);
+    expect(verifyEvolutionWebhookSignature(null, "instance-secret")).toBe(false);
   });
 });

@@ -73,10 +73,15 @@ export function WhatsAppConfig() {
   const [uazapiTokenEdited, setUazapiTokenEdited] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [uazapiQrCode, setUazapiQrCode] = useState<string | null>(null);
+  const [evolutionBaseUrl, setEvolutionBaseUrl] = useState('');
+  const [evolutionInstanceName, setEvolutionInstanceName] = useState('');
+  const [evolutionApiKey, setEvolutionApiKey] = useState('');
+  const [evolutionApiKeyEdited, setEvolutionApiKeyEdited] = useState(false);
+  const [evolutionQrCode, setEvolutionQrCode] = useState<string | null>(null);
   const [verifyToken, setVerifyToken] = useState('');
   const [pin, setPin] = useState('');
   const [tokenEdited, setTokenEdited] = useState(false);
-  const [provider, setProvider] = useState<'meta' | 'uazapi'>('uazapi');
+  const [provider, setProvider] = useState<'meta' | 'uazapi' | 'evolution'>('uazapi');
 
   // True once /register has succeeded on Meta's side (timestamp set
   // in the row). When false, the saved config is metadata-only and
@@ -102,6 +107,10 @@ export function WhatsAppConfig() {
       ? `${window.location.origin}/api/whatsapp/webhook`
       : '';
 
+  const uazapiWebhookUrl = webhookUrl
+    ? `${webhookUrl}?uazapi_token=SEU_TOKEN_DA_VERCEL`
+    : '';
+
   const fetchConfig = useCallback(async (acctId: string) => {
     setLoading(true);
     try {
@@ -113,7 +122,7 @@ export function WhatsAppConfig() {
       // remains accurate.
       const { data, error } = await supabase
         .from('whatsapp_config')
-        .select('id, user_id, phone_number_id, waba_id, access_token, verify_token, instance_id, instance_token, uazapi_base_url, connection_state, status, connected_at, registered_at, subscribed_apps_at, last_registration_error')
+        .select('id, user_id, provider, phone_number_id, waba_id, access_token, verify_token, instance_id, instance_token, uazapi_base_url, evolution_base_url, evolution_instance_name, connection_state, status, connected_at, registered_at, subscribed_apps_at, last_registration_error')
         .eq('account_id', acctId)
         .maybeSingle();
 
@@ -123,12 +132,17 @@ export function WhatsAppConfig() {
 
       if (data) {
         setConfig(data);
+        setProvider((data.provider || (data.instance_token ? 'uazapi' : 'meta')) as 'meta' | 'uazapi' | 'evolution');
         setPhoneNumberId(data.phone_number_id || '');
         setWabaId(data.waba_id || '');
         setAccessToken(data.access_token && !data.instance_token ? MASKED_TOKEN : '');
         setUazapiBaseUrl(data.uazapi_base_url || '');
         setUazapiToken(data.instance_token ? MASKED_TOKEN : '');
         setUazapiTokenEdited(false);
+        setEvolutionBaseUrl(data.evolution_base_url || '');
+        setEvolutionInstanceName(data.evolution_instance_name || '');
+        setEvolutionApiKey(data.provider === 'evolution' && data.access_token ? MASKED_TOKEN : '');
+        setEvolutionApiKeyEdited(false);
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
@@ -140,6 +154,10 @@ export function WhatsAppConfig() {
         setUazapiBaseUrl('');
         setUazapiToken('');
         setUazapiTokenEdited(false);
+        setEvolutionBaseUrl('');
+        setEvolutionInstanceName('');
+        setEvolutionApiKey('');
+        setEvolutionApiKeyEdited(false);
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
@@ -147,6 +165,7 @@ export function WhatsAppConfig() {
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
       setUazapiQrCode(null);
+      setEvolutionQrCode(null);
 
       // Then verify health via the API (decrypts token + pings Meta)
       if (data) {
@@ -197,6 +216,72 @@ export function WhatsAppConfig() {
     fetchConfig(accountId);
   }, [authLoading, profileLoading, user?.id, accountId, fetchConfig]);
 
+  async function handleConnectEvolution() {
+    if (!evolutionBaseUrl.trim()) {
+      toast.error('Informe a URL do servidor Evolution.');
+      return;
+    }
+    if (!evolutionInstanceName.trim()) {
+      toast.error('Informe um nome para a nova instância.');
+      return;
+    }
+    const hasSavedKey = config?.provider === 'evolution' && Boolean(config.access_token);
+    if (!hasSavedKey && (!evolutionApiKey.trim() || !evolutionApiKeyEdited)) {
+      toast.error('Informe a API Key global da Evolution.');
+      return;
+    }
+
+    try {
+      setQrLoading(true);
+      setEvolutionQrCode(null);
+      const response = await fetch('/api/whatsapp/config/connect-evolution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          baseUrl: evolutionBaseUrl.trim(),
+          instanceName: evolutionInstanceName.trim(),
+          apiKey: evolutionApiKeyEdited ? evolutionApiKey.trim() : undefined,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || 'Não foi possível criar a instância Evolution.');
+        return;
+      }
+      setEvolutionApiKey(MASKED_TOKEN);
+      setEvolutionApiKeyEdited(false);
+      setConnectionStatus(data.connected ? 'connected' : 'disconnected');
+      toast.success(data.connected ? 'Evolution conectada.' : 'Instância criada. Escaneie o QR Code.');
+      if (accountId) await fetchConfig(accountId);
+      setEvolutionQrCode(data.connected ? null : data.qrcode || null);
+    } catch (error) {
+      console.error('Evolution connection failed:', error);
+      toast.error('Falha ao conectar com a Evolution.');
+    } finally {
+      setQrLoading(false);
+    }
+  }
+  useEffect(() => {
+    if (provider !== 'evolution' || !evolutionQrCode || !accountId) return;
+
+    const interval = window.setInterval(async () => {
+      try {
+        const response = await fetch('/api/whatsapp/config');
+        const data = await response.json();
+        if (data.connected && data.api_type === 'evolution') {
+          window.clearInterval(interval);
+          setEvolutionQrCode(null);
+          setConnectionStatus('connected');
+          toast.success('WhatsApp conectado pela Evolution.');
+          await fetchConfig(accountId);
+        }
+      } catch {
+        // Keep the QR visible and try again on the next interval.
+      }
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [accountId, evolutionQrCode, fetchConfig, provider]);
   async function handleSaveUazapi() {
     if (!uazapiBaseUrl.trim()) {
       toast.error('Informe a URL do servidor uazapi');
@@ -520,8 +605,16 @@ export function WhatsAppConfig() {
   }
 
   const showResetBanner = resetReason === 'token_corrupted';
-  const isUazapiMode = Boolean(config?.instance_token);
+  const activeProvider = config?.provider || (config?.instance_token ? 'uazapi' : 'meta');
+  const isUazapiMode = activeProvider === 'uazapi';
+  const isEvolutionMode = activeProvider === 'evolution';
   const isUazapiConnected = isUazapiMode && (
+    connectionStatus === 'connected' ||
+    config?.status === 'connected' ||
+    config?.connection_state === 'connected'
+  );
+
+  const isEvolutionConnected = isEvolutionMode && (
     connectionStatus === 'connected' ||
     config?.status === 'connected' ||
     config?.connection_state === 'connected'
@@ -531,12 +624,13 @@ export function WhatsAppConfig() {
     <section className="animate-in fade-in-50 duration-200">
       <SettingsPanelHead
         title={t("title")}
-        description="Conecte o WhatsApp pela API oficial da Meta ou pela sua instancia UAZAPI."
+        description="Conecte o WhatsApp pela Meta, UAZAPI ou Evolution API."
       />
-      <Tabs value={provider} onValueChange={(value) => setProvider(value as 'meta' | 'uazapi')} className="mb-4">
+      <Tabs value={provider} onValueChange={(value) => setProvider(value as 'meta' | 'uazapi' | 'evolution')} className="mb-4">
         <TabsList>
           <TabsTrigger value="meta">API Oficial (Meta)</TabsTrigger>
           <TabsTrigger value="uazapi">QR Code (UAZAPI)</TabsTrigger>
+          <TabsTrigger value="evolution">Evolution API</TabsTrigger>
         </TabsList>
       </Tabs>
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
@@ -821,6 +915,112 @@ export function WhatsAppConfig() {
         </Card>
         )}
 
+        {provider === 'evolution' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">Evolution API</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Crie uma nova instância, configure o webhook e conecte o WhatsApp sem sair do AutoIA CRM.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isEvolutionConnected && (
+                <Alert className="border-emerald-700/50 bg-emerald-950/30">
+                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  <AlertTitle className="text-emerald-200">Evolution conectada</AlertTitle>
+                  <AlertDescription className="text-emerald-100/80">
+                    A instância está online e o Inbox usa a Evolution para enviar e receber mensagens.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">URL do servidor</Label>
+                <Input
+                  placeholder="https://evolution.seudominio.com"
+                  value={evolutionBaseUrl}
+                  onChange={(event) => {
+                    setEvolutionBaseUrl(event.target.value);
+                    setEvolutionQrCode(null);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Nome da nova instância</Label>
+                <Input
+                  placeholder="autoia-atendimento"
+                  value={evolutionInstanceName}
+                  onChange={(event) => {
+                    setEvolutionInstanceName(event.target.value);
+                    setEvolutionQrCode(null);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use letras, números, hífen ou underline. O CRM criará esta instância na Evolution.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">API Key global</Label>
+                <div className="relative">
+                  <Input
+                    type={showToken ? 'text' : 'password'}
+                    placeholder="Cole a API Key global da Evolution"
+                    value={evolutionApiKey}
+                    onChange={(event) => {
+                      setEvolutionApiKey(event.target.value);
+                      setEvolutionApiKeyEdited(true);
+                      setEvolutionQrCode(null);
+                    }}
+                    onFocus={() => {
+                      if (evolutionApiKey === MASKED_TOKEN) {
+                        setEvolutionApiKey('');
+                        setEvolutionApiKeyEdited(true);
+                      }
+                    }}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showToken ? 'Ocultar API Key' : 'Mostrar API Key'}
+                  >
+                    {showToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+                {config?.provider === 'evolution' && !evolutionApiKeyEdited && (
+                  <p className="text-xs text-muted-foreground">API Key salva e protegida. Reinforme apenas para alterá-la.</p>
+                )}
+              </div>
+
+              <Button onClick={handleConnectEvolution} disabled={qrLoading}>
+                {qrLoading ? <Loader2 className="size-4 animate-spin" /> : <QrCodeIcon className="size-4" />}
+                {isEvolutionConnected
+                  ? 'Verificar conexão'
+                  : evolutionQrCode
+                    ? 'Atualizar QR Code'
+                    : 'Criar instância e gerar QR Code'}
+              </Button>
+
+              {!isEvolutionConnected && evolutionQrCode && (
+                <div className="rounded-lg border border-border bg-muted/40 p-4">
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <img
+                      src={evolutionQrCode}
+                      alt="QR Code da Evolution para conectar o WhatsApp"
+                      className="size-56 rounded-md border border-border bg-white p-2"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      No WhatsApp, abra Aparelhos conectados e escaneie o QR Code.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         {/* API Credentials */}
         {provider === 'meta' && (
         <Card>
@@ -1027,8 +1227,24 @@ export function WhatsAppConfig() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>Configure na uazapi esta URL de webhook:</p>
-              <code className="block rounded-md bg-muted p-2 text-xs text-foreground break-all">{webhookUrl}</code>
-              <p>Configure o header <code>Authorization: Bearer UAZAPI_WEBHOOK_TOKEN</code>. Depois envie uma mensagem para o numero conectado e veja se ela aparece na caixa de entrada.</p>
+              <code className="block rounded-md bg-muted p-2 text-xs text-foreground break-all">{uazapiWebhookUrl}</code>
+              <p>Troque <code>SEU_TOKEN_DA_VERCEL</code> pelo mesmo valor da variavel <code>UAZAPI_WEBHOOK_TOKEN</code> configurada na Vercel. Depois envie uma mensagem para o numero conectado e veja se ela aparece na caixa de entrada.</p>
+            </CardContent>
+          </Card>
+        ) : provider === 'evolution' ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground text-base">Conexão automática</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                O AutoIA CRM cuida da configuração técnica da Evolution.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>Ao clicar em criar instância, o CRM:</p>
+              <p>1. cria ou reutiliza a instância informada;</p>
+              <p>2. cadastra o webhook seguro desta conta;</p>
+              <p>3. mostra o QR Code para conectar o WhatsApp.</p>
+              <p>Depois da leitura do QR Code, use o botão novamente para confirmar o estado da conexão.</p>
             </CardContent>
           </Card>
         ) : (

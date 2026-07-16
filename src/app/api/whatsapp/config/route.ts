@@ -7,6 +7,7 @@ import {
   verifyPhoneNumber,
 } from '@/lib/whatsapp/meta-api'
 import { getInstanceStatus } from '@/lib/whatsapp/uazapi-client'
+import { getEvolutionConnectionState, isEvolutionConnected } from '@/lib/whatsapp/evolution-client'
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
 
 /**
@@ -88,7 +89,7 @@ export async function GET() {
 
     const { data: config, error: configError } = await supabase
       .from('whatsapp_config')
-      .select('phone_number_id, access_token, instance_token, uazapi_base_url, connection_state, status')
+      .select('provider, phone_number_id, access_token, instance_token, uazapi_base_url, evolution_base_url, evolution_instance_name, connection_state, status')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -111,8 +112,39 @@ export async function GET() {
       )
     }
 
-    // Detect which API type is in use (Meta or uazapi)
-    if (config.instance_token) {
+    const provider = config.provider || (config.instance_token ? 'uazapi' : 'meta')
+
+    if (provider === 'evolution') {
+      try {
+        if (!config.access_token || !config.evolution_base_url || !config.evolution_instance_name) {
+          throw new Error('Evolution configuration is incomplete')
+        }
+        const apiKey = decrypt(config.access_token)
+        const state = await getEvolutionConnectionState({
+          baseUrl: config.evolution_base_url,
+          apiKey,
+          instanceName: config.evolution_instance_name,
+        })
+        return NextResponse.json({
+          connected: isEvolutionConnected(state),
+          api_type: 'evolution',
+          instance_state: state,
+          instance_name: config.evolution_instance_name,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown Evolution error'
+        console.error('[whatsapp/config GET] Evolution status check failed:', message)
+        return NextResponse.json({
+          connected: false,
+          reason: 'evolution_error',
+          api_type: 'evolution',
+          message: `Evolution error: ${message}`,
+        })
+      }
+    }
+
+    // Detect which API type is in use (Meta or UAZAPI)
+    if (provider === 'uazapi' && config.instance_token) {
       // uazapi mode
       try {
         const decryptedInstanceToken = decrypt(config.instance_token)
@@ -143,7 +175,7 @@ export async function GET() {
     }
 
     // Meta mode
-    if (config.access_token) {
+    if (provider === 'meta' && config.access_token) {
       // Try to decrypt the stored token with the current ENCRYPTION_KEY.
       // If this fails, the key changed (or was never consistent across envs).
       let accessToken: string
@@ -390,10 +422,17 @@ export async function POST(request: Request) {
     // store the credentials and the error so the UI can guide the
     // user through a retry.
     const baseRow = {
+      provider: 'meta',
       phone_number_id,
       waba_id: waba_id || null,
       access_token: encryptedAccessToken,
       verify_token: encryptedVerifyToken,
+      instance_id: null,
+      instance_token: null,
+      uazapi_base_url: null,
+      evolution_base_url: null,
+      evolution_instance_name: null,
+      evolution_webhook_secret: null,
       status: registrationError ? 'disconnected' : 'connected',
       connected_at: registrationError ? null : new Date().toISOString(),
       registered_at: registrationError ? null : registeredAt,

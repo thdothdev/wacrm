@@ -35,6 +35,10 @@ import {
   type MediaKind as UazapiMediaKind,
 } from '@/lib/whatsapp/uazapi-client';
 import {
+  sendEvolutionMedia,
+  sendEvolutionText,
+} from '@/lib/whatsapp/evolution-client';
+import {
   validateInteractivePayload,
   interactivePayloadPreviewText,
   type InteractiveMessagePayload,
@@ -263,19 +267,25 @@ if (!contact?.phone) {
     );
   }
 
-  // Detect which API type is in use
-const isUazapi = Boolean(config.instance_token);
-const isMeta = Boolean(config.access_token && !config.instance_token);
+  // Use the explicit provider; keep legacy rows working until the migration backfill runs.
+const provider = config.provider || (config.instance_token ? 'uazapi' : 'meta');
+const isUazapi = provider === 'uazapi';
+const isEvolution = provider === 'evolution';
+const isMeta = provider === 'meta';
 
-if (!isUazapi && !isMeta) {
+if (
+  !['meta', 'uazapi', 'evolution'].includes(provider) ||
+  (isUazapi && !config.instance_token) ||
+  ((isMeta || isEvolution) && !config.access_token)
+) {
   throw new SendMessageError(
     'whatsapp_misconfigured',
-    'WhatsApp config is incomplete. Missing credentials for both Meta and uazapi.',
+    'WhatsApp config is incomplete for the selected provider.',
     500
   );
 }
 
-const sanitizedPhone = isUazapi
+const sanitizedPhone = isUazapi || isEvolution
   ? sanitizePhoneForUazapi(contact.phone)
   : sanitizePhoneForMeta(contact.phone);
 
@@ -283,7 +293,7 @@ const sanitizedPhone = isUazapi
   // Decrypt appropriate credentials
   let credential: string;
   try {
-    if (isMeta) {
+    if (isMeta || isEvolution) {
       credential = decrypt(config.access_token);
       // Self-heal legacy CBC ciphertexts. Fire-and-forget; idempotent.
       if (isLegacyFormat(config.access_token)) {
@@ -427,6 +437,41 @@ const sanitizedPhone = isUazapi
         contextMessageId,
       });
       return result.messageId;
+    } else if (isEvolution) {
+      // ======== EVOLUTION API ========
+      if (messageType === 'template' || messageType === 'interactive') {
+        throw new SendMessageError(
+          'unsupported',
+          'Templates and interactive messages are not supported with Evolution yet.',
+          400
+        );
+      }
+      if (!config.evolution_base_url || !config.evolution_instance_name) {
+        throw new SendMessageError(
+          'whatsapp_misconfigured',
+          'Evolution configuration is incomplete.',
+          500
+        );
+      }
+      if (isMediaKind) {
+        return sendEvolutionMedia({
+          baseUrl: config.evolution_base_url,
+          apiKey: credential,
+          instanceName: config.evolution_instance_name,
+          to: phone,
+          kind: messageType as UazapiMediaKind,
+          mediaUrl: mediaUrl!,
+          caption: contentText || undefined,
+          filename: filename || undefined,
+        });
+      }
+      return sendEvolutionText({
+        baseUrl: config.evolution_base_url,
+        apiKey: credential,
+        instanceName: config.evolution_instance_name,
+        to: phone,
+        text: contentText!,
+      });
     } else {
       // ======== UAZAPI ========
       // uazapi doesn't support templates or interactive yet
@@ -513,14 +558,14 @@ const sanitizedPhone = isUazapi
         .eq('id', contact.id);
     }
   } else {
-    // uazapi: direct send (no phone variants)
+    // QR-code providers send directly, without Meta phone-number variants.
     try {
       waMessageId = await attempt(sanitizedPhone);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Unknown uazapi error';
-      console.error('[send-message] uazapi send failed:', message);
-      throw new SendMessageError('uazapi_error', `uazapi error: ${message}`, 502);
+        err instanceof Error ? err.message : `Unknown ${provider} error`;
+      console.error(`[send-message] ${provider} send failed:`, message);
+      throw new SendMessageError(`${provider}_error`, `${provider} error: ${message}`, 502);
     }
   }
 

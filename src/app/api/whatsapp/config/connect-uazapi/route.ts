@@ -113,6 +113,7 @@ export async function POST(request: Request) {
 
     const connected = status.connected || status.state === 'connected'
     const baseRow = {
+      provider: 'uazapi',
       phone_number_id: instanceId,
       waba_id: null,
       access_token: encryptedToken,
@@ -120,6 +121,9 @@ export async function POST(request: Request) {
       instance_id: instanceId,
       instance_token: encryptedToken,
       uazapi_base_url: baseUrl,
+      evolution_base_url: null,
+      evolution_instance_name: null,
+      evolution_webhook_secret: null,
       connection_state: connected ? 'connected' : status.state,
       status: connected ? 'connected' : 'disconnected',
       connected_at: connected ? now : null,

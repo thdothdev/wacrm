@@ -5,6 +5,7 @@ import { getMediaUrl } from '@/lib/whatsapp/meta-api'
 import { normalizePhone } from '@/lib/whatsapp/phone-utils'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import {
+  verifyEvolutionWebhookSignature,
   verifyMetaWebhookSignature,
   verifyUazapiWebhookSignature,
 } from '@/lib/whatsapp/webhook-signature'
@@ -177,6 +178,8 @@ export async function POST(request: Request) {
   const rawBody = await request.text()
   const signature = request.headers.get('x-hub-signature-256')
   const authorization = request.headers.get('authorization')
+  const evolutionToken = request.headers.get('x-autoia-webhook-token')
+  const urlToken = new URL(request.url).searchParams.get('uazapi_token')
 
   let body:
     | { entry?: WhatsAppWebhookEntry[] }
@@ -190,9 +193,12 @@ export async function POST(request: Request) {
 
   // Try to determine which API format this is:
   // - Meta uses x-hub-signature-256 header
-  // - uazapi uses the Authorization header configured in UAZAPI_WEBHOOK_TOKEN.
+  // - uazapi uses a secret URL token because its dashboard has no custom header field.
   const isMetaFormat = signature !== null
-  const isUazapiFormat = !isMetaFormat
+  const isEvolutionFormat = !isMetaFormat && isEvolutionWebhookBody(body)
+  const isUazapiFormat = !isMetaFormat && !isEvolutionFormat
+
+  let matchedEvolutionConfig: { account_id: string; user_id: string } | null = null
 
   // Verify based on detected format
   if (isMetaFormat) {
@@ -200,6 +206,36 @@ export async function POST(request: Request) {
       console.warn('[webhook] rejected Meta request with invalid signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
+  } else if (isEvolutionFormat) {
+    const instanceName = getEvolutionInstanceName(body)
+    if (!instanceName) {
+      return NextResponse.json({ error: 'Missing Evolution instance' }, { status: 401 })
+    }
+    const { data: configs, error } = await supabaseAdmin()
+      .from('whatsapp_config')
+      .select('account_id, user_id, evolution_webhook_secret')
+      .eq('provider', 'evolution')
+      .eq('evolution_instance_name', instanceName)
+    if (error || !configs?.length) {
+      console.warn('[webhook] rejected unknown Evolution instance:', instanceName)
+      return NextResponse.json({ error: 'Unknown Evolution instance' }, { status: 401 })
+    }
+    for (const config of configs) {
+      try {
+        const expectedToken = decrypt(config.evolution_webhook_secret)
+        if (verifyEvolutionWebhookSignature(evolutionToken, expectedToken)) {
+          matchedEvolutionConfig = { account_id: config.account_id, user_id: config.user_id }
+          break
+        }
+      } catch {
+        console.error('[webhook] Evolution webhook token could not be decrypted')
+      }
+    }
+    if (!matchedEvolutionConfig) {
+      console.warn('[webhook] rejected Evolution request with invalid token')
+      return NextResponse.json({ error: 'Invalid webhook token' }, { status: 401 })
+    }
+    console.log('[webhook] Evolution webhook accepted:', instanceName)
   } else if (isUazapiFormat) {
     if (!isUazapiWebhookBody(body)) {
       console.warn(
@@ -208,9 +244,9 @@ export async function POST(request: Request) {
       )
       return NextResponse.json({ error: 'Missing verification' }, { status: 401 })
     }
-    if (!verifyUazapiWebhookSignature(authorization)) {
-      console.warn('[webhook] rejected uazapi request with invalid authorization header')
-      return NextResponse.json({ error: 'Invalid authorization' }, { status: 401 })
+    if (!verifyUazapiWebhookSignature(authorization, urlToken)) {
+      console.warn('[webhook] rejected uazapi request with invalid webhook token')
+      return NextResponse.json({ error: 'Invalid webhook token' }, { status: 401 })
     }
     console.log('[webhook] uazapi webhook accepted')
   } else {
@@ -233,7 +269,9 @@ export async function POST(request: Request) {
   after(async () => {
     try {
       // Detect payload format and route to appropriate handler
-      if (isUazapiFormat) {
+      if (isEvolutionFormat) {
+        await processEvolutionWebhook(body, matchedEvolutionConfig!)
+      } else if (isUazapiFormat) {
         // uazapi format: { event: '...', data: {...} }
         await processUazapiWebhook(normalizeUazapiWebhookBody(body))
       } else {
@@ -248,6 +286,21 @@ export async function POST(request: Request) {
   return NextResponse.json({ status: 'received' }, { status: 200 })
 }
 
+function getEvolutionInstanceName(body: unknown): string | undefined {
+  const record = getRecord(body)
+  const instance = getRecord(record?.instance)
+  return getString(record, ['instance', 'instanceName']) || getString(instance, ['name', 'instanceName'])
+}
+
+function isEvolutionWebhookBody(body: unknown): boolean {
+  const record = getRecord(body)
+  const event = getString(record, ['event'])?.toLowerCase().replace(/_/g, '.')
+  return Boolean(
+    getEvolutionInstanceName(body) &&
+      event &&
+      ['messages.upsert', 'messages.update', 'connection.update'].includes(event),
+  )
+}
 function isUazapiWebhookBody(body: unknown): boolean {
   const record = getRecord(body)
   if (!record) return false
@@ -358,6 +411,119 @@ function describePayloadKeys(value: unknown): string {
  *   { event: 'messages.new', data: { from, text, timestamp, messageid, chatid } }
  *   { event: 'message.status', data: { id, status, timestamp, recipient_id } }
  */
+async function processEvolutionWebhook(
+  body: Record<string, unknown>,
+  config: { account_id: string; user_id: string },
+) {
+  const event = getString(body, ['event'])?.toLowerCase().replace(/_/g, '.')
+  const instanceName = getEvolutionInstanceName(body)
+  const rawData = getRecord(body.data)
+  const data = Array.isArray(body.data) ? getRecord(body.data[0]) : rawData
+  if (!event || !instanceName || !data) return
+
+
+  if (event === 'connection.update') {
+    const state = getString(data, ['state', 'status']) || 'close'
+    const connected = state.toLowerCase() === 'open'
+    await supabaseAdmin()
+      .from('whatsapp_config')
+      .update({
+        connection_state: connected ? 'connected' : 'disconnected',
+        status: connected ? 'connected' : 'disconnected',
+        connected_at: connected ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('account_id', config.account_id)
+    return
+  }
+
+  const key = getRecord(data.key)
+  if (event === 'messages.update') {
+    const update = getRecord(data.update)
+    const messageId = getString(key, ['id']) || getString(data, ['id', 'messageId'])
+    const rawStatus = getRecordValue(update || data, ['status'])
+    if (messageId && rawStatus !== undefined) {
+      await handleStatusUpdate({
+        id: messageId,
+        status: mapEvolutionStatus(rawStatus),
+        timestamp: normalizeWebhookTimestamp(getRecordValue(data, ['messageTimestamp', 'timestamp'])),
+        recipient_id: '',
+      })
+    }
+    return
+  }
+
+  if (event !== 'messages.upsert' || key?.fromMe === true) return
+  const remoteJid = getString(key, ['remoteJid', 'participant']) || getString(data, ['sender'])
+  const messageId = getString(key, ['id']) || getString(data, ['id', 'messageId'])
+  if (!remoteJid || !messageId || /@(g\.us|broadcast|newsletter)$/.test(remoteJid)) return
+
+  const messagePayload = getRecord(data.message) || {}
+  const messageType = getString(data, ['messageType', 'type']) || Object.keys(messagePayload)[0] || 'conversation'
+  const normalizedType = getUazapiMessageType(messageType)
+  const content = getRecord(messagePayload[messageType]) || getRecord(messagePayload[`${normalizedType}Message`])
+  const text = getUazapiMessageText(data)
+  const mimeType = getString(content, ['mimetype', 'mime_type']) || 'application/octet-stream'
+  const filename = getString(content, ['fileName', 'filename'])
+  const rawMedia = getString(data, ['mediaUrl', 'media_url', 'url', 'base64'])
+  const mediaUrl = rawMedia
+    ? rawMedia.startsWith('data:') || /^https?:\/\//i.test(rawMedia)
+      ? rawMedia
+      : `data:${mimeType};base64,${rawMedia}`
+    : undefined
+
+  const message: WhatsAppMessage = {
+    id: messageId,
+    from: remoteJid,
+    timestamp: normalizeWebhookTimestamp(getRecordValue(data, ['messageTimestamp', 'timestamp'])),
+    type: normalizedType,
+    text: text ? { body: text } : undefined,
+    media_url: mediaUrl,
+  }
+  if (normalizedType === 'image') {
+    message.image = { id: messageId, mime_type: mimeType, caption: text }
+  } else if (normalizedType === 'video') {
+    message.video = { id: messageId, mime_type: mimeType, caption: text }
+  } else if (normalizedType === 'document') {
+    message.document = { id: messageId, mime_type: mimeType, filename, caption: text }
+  } else if (normalizedType === 'audio') {
+    message.audio = { id: messageId, mime_type: mimeType }
+  } else if (normalizedType === 'sticker') {
+    message.sticker = { id: messageId, mime_type: mimeType }
+  }
+
+  const contextInfo = getRecord(content?.contextInfo)
+  const quotedId = getString(contextInfo, ['stanzaId'])
+  if (quotedId) message.context = { id: quotedId }
+
+  const phone = remoteJid.split('@')[0]
+  await processMessage(
+    message,
+    { profile: { name: getString(data, ['pushName', 'senderName']) || phone }, wa_id: phone },
+    config.account_id,
+    config.user_id,
+    '',
+  )
+}
+
+function normalizeWebhookTimestamp(value: unknown): string {
+  const numeric = Number(value) || Date.now()
+  return Math.floor(numeric > 10_000_000_000 ? numeric / 1000 : numeric).toString()
+}
+
+function mapEvolutionStatus(value: unknown): string {
+  if (typeof value === 'number') {
+    if (value >= 3) return 'read'
+    if (value === 2) return 'delivered'
+    if (value >= 0) return 'sent'
+    return 'failed'
+  }
+  const status = String(value).toLowerCase()
+  if (status.includes('read') || status.includes('played')) return 'read'
+  if (status.includes('deliver')) return 'delivered'
+  if (status.includes('fail') || status.includes('error')) return 'failed'
+  return 'sent'
+}
 async function processUazapiWebhook(body: { event?: string; data?: unknown }) {
   const { event, data } = body
 
@@ -1319,6 +1485,7 @@ async function parseMessageContent(
   const verifyAndBuildUrl = async (
     mediaId: string
   ): Promise<string | null> => {
+    if (message.media_url) return message.media_url
     try {
       await getMediaUrl({ mediaId, accessToken })
       return `/api/whatsapp/media/${mediaId}`

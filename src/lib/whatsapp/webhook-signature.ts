@@ -47,36 +47,48 @@ export function verifyMetaWebhookSignature(
 }
 
 /**
- * Verify the authorization token uazapi sends with webhook POSTs.
+ * Verify the token UAZAPI sends with webhook POSTs.
  *
- * Unlike Meta's HMAC signature, uazapi uses a simple bearer token.
- * We configured this token via setWebhook() with authHeader parameter.
- * Each webhook POST from uazapi includes it in the Authorization header.
+ * UAZAPI's dashboard does not support custom headers, so production uses a
+ * secret URL query parameter: /api/whatsapp/webhook?uazapi_token=<token>.
+ * Keep Authorization support for API-created webhooks.
  *
  * Contract:
- *   `UAZAPI_WEBHOOK_TOKEN` is **required**. If it's missing we fail closed —
+ *   `UAZAPI_WEBHOOK_TOKEN` is **required**. If it's missing we fail closed -
  *   every request is rejected until the operator configures the token.
  */
 export function verifyUazapiWebhookSignature(
   authorizationHeader: string | null,
+  urlToken?: string | null,
 ): boolean {
   const token = process.env.UAZAPI_WEBHOOK_TOKEN
   if (!token) {
     console.error(
-      '[webhook] UAZAPI_WEBHOOK_TOKEN is not set — rejecting request. ' +
-        'Configure the env var to enable signature verification.',
+      '[webhook] UAZAPI_WEBHOOK_TOKEN is not set - rejecting request. ' +
+        'Configure the env var to enable webhook verification.',
     )
     return false
   }
 
-  if (!authorizationHeader) return false
+  const provided = authorizationHeader?.startsWith('Bearer ')
+    ? authorizationHeader.slice('Bearer '.length)
+    : urlToken
 
-  // uazapi sends: Authorization: Bearer <token>
-  const expected = `Bearer ${token}`
-  const a = Buffer.from(authorizationHeader)
-  const b = Buffer.from(expected)
+  if (!provided) return false
 
-  // Bail if lengths differ — timingSafeEqual throws otherwise.
+  const a = Buffer.from(provided)
+  const b = Buffer.from(token)
   if (a.length !== b.length) return false
   return crypto.timingSafeEqual(a, b)
+}
+
+export function verifyEvolutionWebhookSignature(
+  providedToken: string | null,
+  expectedToken: string,
+): boolean {
+  if (!providedToken || !expectedToken) return false
+  const provided = Buffer.from(providedToken)
+  const expected = Buffer.from(expectedToken)
+  if (provided.length !== expected.length) return false
+  return crypto.timingSafeEqual(provided, expected)
 }
