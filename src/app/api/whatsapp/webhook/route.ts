@@ -1299,14 +1299,12 @@ async function processMessage(
   accessToken: string
 ) {
   const senderPhone = normalizePhone(message.from)
-  const contactName = contact.profile.name
-
-  // Find or create contact
+  // Provider profile names are untrusted display hints. CRM names come from
+  // manual entry or from the customer's explicit answer captured by the AI.
   const contactOutcome = await findOrCreateContact(
     accountId,
     configOwnerUserId,
-    senderPhone,
-    contactName
+    senderPhone
   )
   if (!contactOutcome) return
   const contactRecord = contactOutcome.contact
@@ -1725,8 +1723,7 @@ interface ContactOutcome {
 async function findOrCreateContact(
   accountId: string,
   configOwnerUserId: string,
-  phone: string,
-  name: string
+  phone: string
 ): Promise<ContactOutcome | null> {
   // Find an existing contact for this account by phone. The shared
   // helper pre-filters in SQL by the last-8-digit suffix (so we don't
@@ -1741,13 +1738,6 @@ async function findOrCreateContact(
   )
 
   if (existingContact) {
-    // Update name if it changed
-    if (isUsefulContactName(name, phone) && name !== existingContact.name) {
-      await supabaseAdmin()
-        .from('contacts')
-        .update({ name, updated_at: new Date().toISOString() })
-        .eq('id', existingContact.id)
-    }
     return { contact: existingContact, wasCreated: false }
   }
 
@@ -1761,7 +1751,7 @@ async function findOrCreateContact(
       account_id: accountId,
       user_id: configOwnerUserId,
       phone,
-      name: isUsefulContactName(name, phone) ? name : phone,
+      name: phone,
     })
     .select()
     .single()
@@ -1782,13 +1772,6 @@ async function findOrCreateContact(
   return { contact: newContact, wasCreated: true }
 }
 
-function isUsefulContactName(name: string | null | undefined, phone: string): name is string {
-  if (!name) return false
-  const trimmed = name.trim()
-  if (!trimmed) return false
-  if (trimmed.includes('@')) return false
-  return normalizePhone(trimmed) !== phone
-}
 async function findOrCreateConversation(
   accountId: string,
   configOwnerUserId: string,
