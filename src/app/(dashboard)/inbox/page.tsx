@@ -40,6 +40,7 @@ export default function InboxPage() {
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null
   );
+  const [enforceMetaSessionWindow, setEnforceMetaSessionWindow] = useState(false);
   /**
    * Bumped whenever we want children (ConversationList, MessageThread)
    * to refetch from the DB — used as a safety net against missed
@@ -193,6 +194,7 @@ export default function InboxPage() {
       const payload = await res.json();
 
       setWhatsappConnected(Boolean(payload.connected));
+      setEnforceMetaSessionWindow(payload.api_type === 'meta');
     };
 
     checkConnection();
@@ -599,6 +601,7 @@ export default function InboxPage() {
             conversation={activeConversation}
             contact={activeContact}
             messages={messages}
+            enforceSessionWindow={enforceMetaSessionWindow}
             onMessagesLoaded={handleMessagesLoaded}
             onNewMessage={handleNewMessage}
             onUpdateMessage={handleUpdateMessage}
