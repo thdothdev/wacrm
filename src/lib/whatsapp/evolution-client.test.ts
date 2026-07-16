@@ -68,6 +68,30 @@ describe('Evolution client', () => {
     const goRequest = fetchMock.mock.calls[1][1] as RequestInit
     expect(JSON.parse(String(goRequest.body))).toEqual({ name: 'autoia' })
   })
+  it('retries the legacy nested webhook payload after a 400', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('Bad Request', { status: 400 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await setEvolutionWebhook({
+      baseUrl: 'https://evolution.example.com',
+      apiKey: 'global-key',
+      instanceName: 'autoia',
+      webhookUrl: 'https://crm.example.com/api/whatsapp/webhook',
+      webhookSecret: 'account-secret',
+    })
+
+    const retry = fetchMock.mock.calls[1][1] as RequestInit
+    expect(JSON.parse(String(retry.body))).toMatchObject({
+      webhook: {
+        enabled: true,
+        webhookByEvents: false,
+        webhookBase64: true,
+        events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
+      },
+    })
+  })
   it('configures the account webhook with its secret URL token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)

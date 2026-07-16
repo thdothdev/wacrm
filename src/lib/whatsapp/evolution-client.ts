@@ -211,20 +211,33 @@ export async function setEvolutionWebhook(args: {
   }
   const webhookUrl = new URL(args.webhookUrl)
   webhookUrl.searchParams.set('evolution_token', args.webhookSecret)
-  await evolutionRequest(
-    args.baseUrl,
-    args.apiKey,
-    `/webhook/set/${encodeURIComponent(args.instanceName)}`,
-    {
+  const endpoint = `/webhook/set/${encodeURIComponent(args.instanceName)}`
+  const webhook = {
+    enabled: true,
+    url: webhookUrl.toString(),
+    events: V2_EVENTS,
+    base64: true,
+  }
+  try {
+    await evolutionRequest(args.baseUrl, args.apiKey, endpoint, {
+      method: 'POST',
+      body: JSON.stringify(webhook),
+    })
+  } catch (error) {
+    if (!(error instanceof EvolutionRequestError) || error.status !== 400) throw error
+    await evolutionRequest(args.baseUrl, args.apiKey, endpoint, {
       method: 'POST',
       body: JSON.stringify({
-        enabled: true,
-        url: webhookUrl.toString(),
-        events: V2_EVENTS,
-        base64: true,
+        webhook: {
+          enabled: webhook.enabled,
+          url: webhook.url,
+          webhookByEvents: false,
+          webhookBase64: webhook.base64,
+          events: webhook.events,
+        },
       }),
-    },
-  )
+    })
+  }
 }
 
 function messageId(data: Json) {
