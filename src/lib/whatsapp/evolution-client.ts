@@ -209,6 +209,8 @@ export async function setEvolutionWebhook(args: {
     })
     return
   }
+  const webhookUrl = new URL(args.webhookUrl)
+  webhookUrl.searchParams.set('evolution_token', args.webhookSecret)
   await evolutionRequest(
     args.baseUrl,
     args.apiKey,
@@ -217,9 +219,8 @@ export async function setEvolutionWebhook(args: {
       method: 'POST',
       body: JSON.stringify({
         enabled: true,
-        url: args.webhookUrl,
+        url: webhookUrl.toString(),
         events: V2_EVENTS,
-        headers: { 'x-autoia-webhook-token': args.webhookSecret },
         base64: true,
       }),
     },

@@ -178,8 +178,11 @@ export async function POST(request: Request) {
   const rawBody = await request.text()
   const signature = request.headers.get('x-hub-signature-256')
   const authorization = request.headers.get('authorization')
-  const evolutionToken = request.headers.get('x-autoia-webhook-token')
-  const urlToken = new URL(request.url).searchParams.get('uazapi_token')
+  const requestUrl = new URL(request.url)
+  const evolutionToken =
+    request.headers.get('x-autoia-webhook-token') ||
+    requestUrl.searchParams.get('evolution_token')
+  const urlToken = requestUrl.searchParams.get('uazapi_token')
 
   let body:
     | { entry?: WhatsAppWebhookEntry[] }

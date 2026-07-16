@@ -68,7 +68,7 @@ describe('Evolution client', () => {
     const goRequest = fetchMock.mock.calls[1][1] as RequestInit
     expect(JSON.parse(String(goRequest.body))).toEqual({ name: 'autoia' })
   })
-  it('configures the account webhook with its secret header', async () => {
+  it('configures the account webhook with its secret URL token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -82,8 +82,8 @@ describe('Evolution client', () => {
 
     const init = fetchMock.mock.calls[0][1] as RequestInit
     expect(JSON.parse(String(init.body))).toMatchObject({
+      url: 'https://crm.example.com/api/whatsapp/webhook?evolution_token=account-secret',
       enabled: true,
-      headers: { 'x-autoia-webhook-token': 'account-secret' },
       events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'CONNECTION_UPDATE'],
     })
   })
