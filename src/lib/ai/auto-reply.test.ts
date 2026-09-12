@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
     conv: null as Record<string, unknown> | null,
     autoResponders: [] as { id: string }[],
     claim: true as boolean,
+    latestInboundMessageId: 'msg-1',
     updatePayload: null as Record<string, unknown> | null,
     rpcCalls: [] as { name: string; args: unknown }[],
   },
@@ -33,6 +34,22 @@ vi.mock('./admin-client', () => ({
           in: () => chain,
           limit: () =>
             Promise.resolve({ data: h.state.autoResponders, error: null }),
+        }
+        return chain
+      }
+      if (table === 'messages') {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: () =>
+            Promise.resolve({
+              data: h.state.latestInboundMessageId
+                ? { id: h.state.latestInboundMessageId }
+                : null,
+              error: null,
+            }),
         }
         return chain
       }
@@ -63,6 +80,7 @@ const ARGS = {
   accountId: 'acct-1',
   conversationId: 'conv-1',
   contactId: 'contact-1',
+  inboundMessageId: 'msg-1',
   configOwnerUserId: 'user-1',
 }
 
@@ -90,6 +108,7 @@ beforeEach(() => {
   }
   h.state.autoResponders = []
   h.state.claim = true
+  h.state.latestInboundMessageId = 'msg-1'
   h.state.updatePayload = null
   h.state.rpcCalls = []
   h.loadAiConfig.mockResolvedValue(aiConfig())
@@ -176,6 +195,13 @@ describe('dispatchInboundToAiReply â€” eligibility gates', () => {
       ai_reply_count: 3,
     }
     await dispatchInboundToAiReply(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+  })
+
+  it('waits for a message burst and lets only the newest inbound reply', async () => {
+    h.state.latestInboundMessageId = 'msg-2'
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.generateReply).not.toHaveBeenCalled()
     expect(h.engineSendText).not.toHaveBeenCalled()
   })
 

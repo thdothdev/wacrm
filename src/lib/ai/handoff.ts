@@ -48,11 +48,12 @@ export function buildHandoffSummary(args: {
 }
 
 export function inferHandoffReason(messages: ChatMessage[]): HandoffReason {
+  const lastCustomerIndex = [...messages]
+    .map((message, index) => ({ message, index }))
+    .reverse()
+    .find(({ message }) => message.role === 'user' && message.content.trim())?.index
   const lastCustomer =
-    [...messages]
-      .reverse()
-      .find((m) => m.role === 'user' && m.content.trim())
-      ?.content.toLowerCase() ?? ''
+    lastCustomerIndex === undefined ? '' : messages[lastCustomerIndex].content.toLowerCase()
 
   if (/\b(humano|atendente|especialista|consultor|pessoa|gerente|falar com|atendimento humano)\b/i.test(lastCustomer)) {
     return 'human_requested'
@@ -63,6 +64,21 @@ export function inferHandoffReason(messages: ChatMessage[]): HandoffReason {
   }
 
   if (/\b(preco|orcamento|contrato|proposta|pagamento|desconto|prazo|valor|reuniao|agendar)\b/i.test(lastCustomer)) {
+    return 'needs_business_review'
+  }
+
+  const priorAssistant =
+    lastCustomerIndex === undefined
+      ? ''
+      : messages
+          .slice(0, lastCustomerIndex)
+          .reverse()
+          .find((message) => message.role === 'assistant')
+          ?.content.toLowerCase() ?? ''
+  if (
+    /^(sim|pode|pode sim|claro|ok|tudo bem|isso)$/i.test(lastCustomer.trim()) &&
+    /\b(encaminh|especialista|consultor|reuniao|proposta)\b/i.test(priorAssistant)
+  ) {
     return 'needs_business_review'
   }
 

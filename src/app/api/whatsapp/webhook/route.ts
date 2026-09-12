@@ -1617,6 +1617,7 @@ async function processMessage(
       accountId,
       conversationId: conversation.id,
       contactId: contactRecord.id,
+      inboundMessageId: insertedRows[0].id,
       configOwnerUserId,
     })
   }

@@ -72,4 +72,13 @@ describe('inferHandoffReason', () => {
     expect(inferHandoffReason([{ role: 'user', content: 'isso e urgente, estou insatisfeito' }])).toBe('customer_frustrated')
     expect(inferHandoffReason([{ role: 'user', content: 'preciso de uma proposta' }])).toBe('needs_business_review')
   })
+
+  it('recognizes consent to a proposed specialist handoff as commercial review', () => {
+    expect(
+      inferHandoffReason([
+        { role: 'assistant', content: 'Posso encaminhar para um especialista?' },
+        { role: 'user', content: 'Pode sim' },
+      ]),
+    ).toBe('needs_business_review')
+  })
 })

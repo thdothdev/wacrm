@@ -13,12 +13,14 @@ import { moveOpenDealToQualified } from '@/lib/pipelines/ensure-lead-deal'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
 const UNLIMITED_AUTO_REPLY_MAX = 2_147_483_647
+const AUTO_REPLY_DEBOUNCE_MS = process.env.NODE_ENV === 'test' ? 0 : 1_500
 
 interface DispatchArgs {
   /** Tenancy key â€” drives config, contact, and whatsapp_config lookups. */
   accountId: string
   conversationId: string
   contactId: string
+  inboundMessageId: string
   /** The account's WhatsApp config owner, used for the outbound send's
    *  audit columns (mirrors how the flow runner passes it through). */
   configOwnerUserId: string
@@ -46,7 +48,7 @@ interface DispatchArgs {
 export async function dispatchInboundToAiReply(
   args: DispatchArgs,
 ): Promise<void> {
-  const { accountId, conversationId, contactId, configOwnerUserId } = args
+  const { accountId, conversationId, contactId, inboundMessageId, configOwnerUserId } = args
 
   try {
     const db = supabaseAdmin()
@@ -104,6 +106,27 @@ export async function dispatchInboundToAiReply(
         conversationId,
         count: conv.ai_reply_count,
         max: config.autoReplyMaxPerConversation,
+      })
+      return
+    }
+
+    // Customers often split one thought into consecutive WhatsApp
+    // messages. Let that burst land, then only its latest message gets a
+    // reply; older webhook jobs exit before spending a model call.
+    await new Promise((resolve) => setTimeout(resolve, AUTO_REPLY_DEBOUNCE_MS))
+    const { data: latestInbound, error: latestInboundErr } = await db
+      .from('messages')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .eq('sender_type', 'customer')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (latestInboundErr) {
+      console.warn('[ai auto-reply] could not verify latest inbound message:', latestInboundErr)
+    } else if (latestInbound?.id !== inboundMessageId) {
+      console.info('[ai auto-reply] skipped: newer customer message arrived', {
+        conversationId,
       })
       return
     }
