@@ -53,7 +53,11 @@ import {
   isRecipientNotAllowedError,
 } from '@/lib/whatsapp/phone-utils';
 import type { MessageTemplate } from '@/types';
-import { isMessageTemplate } from '@/lib/whatsapp/template-row-guard';
+import {
+  resolveTemplateRow,
+  templateBodyParams,
+  templateContentText,
+} from '@/lib/whatsapp/template-body';
 
 export const MEDIA_KINDS = ['image', 'video', 'document', 'audio'] as const;
 export const VALID_MESSAGE_TYPES = [
@@ -350,37 +354,39 @@ const sanitizedPhone = isUazapi || isEvolution
     }
   }
 
-  // Template row (for header + button components). isMessageTemplate
-  // guards against a malformed local row crashing the send-builder.
+  // Template row — needed for the send-builder's header + button
+  // components AND for the body we persist. The lookup tolerates the
+  // en / en_US split so a caller that omits the language still resolves
+  // a row (see resolveTemplateRow).
   let templateRow: MessageTemplate | null = null;
+  let sendLanguage = templateLanguage || 'en_US';
   if (messageType === 'template' && templateName) {
-    const { data } = await db
-      .from('message_templates')
-      .select('*')
-      .eq('account_id', accountId)
-      .eq('name', templateName)
-      .eq('language', templateLanguage || 'en_US')
-      .maybeSingle();
-    if (data && !isMessageTemplate(data)) {
+    const resolved = await resolveTemplateRow(
+      db,
+      accountId,
+      templateName,
+      templateLanguage
+    );
+    if (resolved.malformed) {
       throw new SendMessageError(
         'template_malformed',
         'Template row is malformed locally — run "Sync from Meta" in Settings to repair it.',
         500
       );
     }
-    templateRow = data ?? null;
+    templateRow = resolved.row;
+    sendLanguage = resolved.language;
   }
 
   const attempt = async (phone: string): Promise<string> => {
     if (isMeta) {
-      // ======== META API ========
       if (messageType === 'template') {
         const result = await sendTemplateMessage({
           phoneNumberId: config.phone_number_id,
           accessToken: credential,
           to: phone,
           templateName: templateName!,
-          language: templateLanguage || 'en_US',
+          language: sendLanguage,
           template: templateRow ?? undefined,
           messageParams: templateMessageParams ?? undefined,
           params: templateParams || [],
@@ -574,8 +580,21 @@ const sanitizedPhone = isUazapi || isEvolution
   // Interactive messages persist the body as content_text (so the
   // conversation-list preview reads sensibly) plus the full structured
   // payload so the thread can re-render the buttons / rows.
-  const interactiveBody =
-    messageType === 'interactive' ? interactivePayload!.body : null;
+  //
+  // Templates persist the *substituted* body. The composer pre-renders
+  // and posts it as contentText; every other caller (the public API,
+  // most importantly) sends none, and storing null there left the
+  // Inbox rendering an empty bubble — issue #483.
+  const persistedText =
+    messageType === 'interactive'
+      ? interactivePayload!.body
+      : messageType === 'template'
+        ? templateContentText(
+            templateRow,
+            templateBodyParams(templateParams, templateMessageParams),
+            contentText
+          )
+        : (contentText ?? null);
 
   const { data: messageRecord, error: msgError } = await db
     .from('messages')
@@ -583,7 +602,7 @@ const sanitizedPhone = isUazapi || isEvolution
       conversation_id: conversationId,
       sender_type: params.senderType ?? 'agent',
       content_type: messageType,
-      content_text: interactiveBody ?? contentText ?? null,
+      content_text: persistedText,
       media_url: mediaUrl || null,
       template_name: templateName || null,
       interactive_payload:
@@ -608,7 +627,7 @@ const sanitizedPhone = isUazapi || isEvolution
   const lastMessageText =
     messageType === 'interactive'
       ? interactivePayloadPreviewText(interactivePayload!)
-      : contentText || `[${messageType}]`;
+      : persistedText || `[${messageType}]`;
 
   await db
     .from('conversations')

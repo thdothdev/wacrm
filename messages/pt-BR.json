@@ -220,7 +220,25 @@
       "interactiveReply": "[Interativo resposta]",
       "unsupported": "[Tipo de mensagem não suportado]",
       "aiBadge": "IA",
-      "aiBadgeTitle": "Enviado automaticamente pelo assistente de IA"
+      "aiBadgeTitle": "Enviado automaticamente pelo assistente de IA",
+      "download": "Baixar",
+      "downloadFailed": "Não foi possível baixar o anexo",
+      "expandVideo": "Expandir vídeo",
+      "imageAlt": "Imagem enviada na conversa",
+      "viewImage": "Ver imagem"
+    },
+    "mediaViewer": {
+      "counter": "{current} de {total}",
+      "download": "Baixar",
+      "downloadFailed": "Não foi possível baixar o anexo",
+      "failed": "Não foi possível carregar o anexo",
+      "imageAlt": "Imagem enviada na conversa",
+      "next": "Próximo",
+      "openOriginal": "Abrir original",
+      "previous": "Anterior",
+      "you": "Você",
+      "zoomIn": "Aumentar zoom",
+      "zoomOut": "Diminuir zoom"
     },
     "actions": {
       "reply": "Responder",
@@ -364,6 +382,7 @@
         "notes": "Notas",
         "custom": "Campos personalizados",
         "deals": "Negócios",
+        "tags": "Tags",
         "noTags": "Sem tags",
         "noDeals": "Sem negócios",
         "addNotePlaceholder": "Adicione uma nota..."
@@ -373,6 +392,7 @@
         "message": "Mensagem",
         "delete": "Excluir"
       },
+      "name": "Nome",
       "contactInfo": "Informacoes do contato",
       "unnamed": "Desconhecido",
       "contactDetailsDesc": "Detalhes do contato",
@@ -661,6 +681,15 @@
       },
       "toastFailedDelete": "Falha ao excluir: {error}",
       "toastDeleted": "Disparo excluído"
+      ,"resumeTitle": "Retomar disparo",
+      "resumeHint": "Retome o envio para os destinatários pendentes.",
+      "resumePending": "Retomar pendentes",
+      "resumeStalledTitle": "Disparo interrompido",
+      "resumeStalledHint": "O envio foi interrompido. Retome para continuar.",
+      "retryFailed": "Tentar novamente os que falharam",
+      "toastResumeFailed": "Não foi possível retomar o disparo",
+      "toastResumeStarted": "Disparo retomado",
+      "toastResumeStartedCapped": "Disparo retomado com limite de envio"
     },
     "new": {
       "title": "Novo disparo",
@@ -827,6 +856,7 @@
       "backAria": "Voltar"
     },
     "builder": {
+      "delete": "Excluir",
       "steps": {
         "send_message": "Enviar Mensagem",
         "send_buttons": "Enviar botões",
@@ -977,6 +1007,8 @@
         "matchType": "Tipo de correspondencia",
         "matchContains": "Contem",
         "matchExact": "Exato",
+        "matchWord": "Palavra inteira",
+        "matchWordHint": "Encontra a palavra completa, sem combinar partes de outras palavras.",
         "closeConversationHint": "Define o status da conversa como \"fechada\". Nenhuma configuração necessária."
       }
     },
@@ -1493,6 +1525,12 @@
       "webhookTitle": "Configuracao do webhook",
       "webhookDesc": "Use esta URL como callback do webhook no painel do app da Meta.",
       "webhookUrl": "URL de callback do webhook",
+      "mediaTitle": "Armazenamento de anexos",
+      "mediaDesc": "A Meta exclui mídias recebidas após cerca de 30 dias. Salve uma cópia para manter os anexos disponíveis.",
+      "mirrorInbound": "Manter anexos recebidos",
+      "mirrorInboundDesc": "Salva fotos, vídeos, áudios e documentos recebidos no armazenamento do Supabase. Arquivos maiores que 16 MB são ignorados.",
+      "mirrorInboundOffWarning": "Novos anexos não serão copiados e poderão ficar indisponíveis após cerca de 30 dias.",
+      "mirrorInboundSaveFailed": "Não foi possível atualizar a configuração de anexos.",
       "saving": "Salvando...",
       "saveConfig": "Salvar configuração",
       "testing": "Testando...",
@@ -1819,5 +1857,12 @@
       "aiConversations": "Conversas com IA",
       "reportTitle": "Atividade da IA"
     }
+  },
+  "AccountAccess": {
+    "errorTitle": "Não foi possível carregar a conta",
+    "errorBody": "Tente novamente em alguns instantes.",
+    "retry": "Tentar novamente",
+    "unlinkedTitle": "Sua conta não está vinculada",
+    "unlinkedBody": "Peça a um administrador para adicionar você à conta."
   }
 }
