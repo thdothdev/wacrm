@@ -25,6 +25,7 @@ const ROW = {
   system_prompt: null,
   is_active: false,
   auto_reply_enabled: false,
+  auto_reply_limit_enabled: true,
   auto_reply_max_per_conversation: 3,
   embeddings_api_key: null,
 }

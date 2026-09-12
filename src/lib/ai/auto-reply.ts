@@ -12,6 +12,8 @@ import { engineSendText } from '@/lib/flows/meta-send'
 import { moveOpenDealToQualified } from '@/lib/pipelines/ensure-lead-deal'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 
+const UNLIMITED_AUTO_REPLY_MAX = 2_147_483_647
+
 interface DispatchArgs {
   /** Tenancy key â€” drives config, contact, and whatsapp_config lookups. */
   accountId: string
@@ -94,7 +96,10 @@ export async function dispatchInboundToAiReply(
     }
     // Cheap early-out; the authoritative cap check is the atomic claim
     // below (this read can race a concurrent inbound).
-    if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) {
+    if (
+      config.autoReplyLimitEnabled &&
+      conv.ai_reply_count >= config.autoReplyMaxPerConversation
+    ) {
       console.warn('[ai auto-reply] skipped: conversation reply limit reached', {
         conversationId,
         count: conv.ai_reply_count,
@@ -218,7 +223,9 @@ export async function dispatchInboundToAiReply(
       'claim_ai_reply_slot',
       {
         conversation_id: conversationId,
-        max_replies: config.autoReplyMaxPerConversation,
+        max_replies: config.autoReplyLimitEnabled
+          ? config.autoReplyMaxPerConversation
+          : UNLIMITED_AUTO_REPLY_MAX,
       },
     )
     if (claimErr) {

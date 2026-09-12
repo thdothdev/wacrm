@@ -74,6 +74,7 @@ function aiConfig(overrides: Partial<AiConfig> = {}): AiConfig {
     systemPrompt: null,
     isActive: true,
     autoReplyEnabled: true,
+    autoReplyLimitEnabled: true,
     autoReplyMaxPerConversation: 3,
     handoffAgentId: null,
     embeddingsApiKey: null,
@@ -176,6 +177,23 @@ describe('dispatchInboundToAiReply â€” eligibility gates', () => {
     }
     await dispatchInboundToAiReply(ARGS)
     expect(h.engineSendText).not.toHaveBeenCalled()
+  })
+
+  it('keeps replying beyond the configured cap when the limit is disabled', async () => {
+    h.loadAiConfig.mockResolvedValue(aiConfig({ autoReplyLimitEnabled: false }))
+    h.state.conv = {
+      assigned_agent_id: null,
+      ai_autoreply_disabled: false,
+      ai_reply_count: 20,
+    }
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.state.rpcCalls).toEqual([
+      {
+        name: 'claim_ai_reply_slot',
+        args: { conversation_id: 'conv-1', max_replies: 2_147_483_647 },
+      },
+    ])
+    expect(h.engineSendText).toHaveBeenCalled()
   })
 
   it('skips when there is nothing to reply to', async () => {

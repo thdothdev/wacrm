@@ -88,6 +88,7 @@ export function AiConfig() {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
+  const [autoReplyLimitEnabled, setAutoReplyLimitEnabled] = useState(true);
   const [maxPerConversation, setMaxPerConversation] = useState(3);
   // Empty string = leave unassigned (shared queue).
   const [handoffAgentId, setHandoffAgentId] = useState('');
@@ -115,6 +116,7 @@ export function AiConfig() {
         setSystemPrompt(data.system_prompt ?? '');
         setIsActive(data.is_active);
         setAutoReplyEnabled(data.auto_reply_enabled);
+        setAutoReplyLimitEnabled(data.auto_reply_limit_enabled ?? true);
         setMaxPerConversation(data.auto_reply_max_per_conversation ?? 3);
         setHandoffAgentId(data.handoff_agent_id ?? '');
         setHasStoredKey(Boolean(data.has_key));
@@ -167,6 +169,7 @@ export function AiConfig() {
     system_prompt: systemPrompt.trim() || null,
     is_active: isActive,
     auto_reply_enabled: autoReplyEnabled,
+    auto_reply_limit_enabled: autoReplyLimitEnabled,
     auto_reply_max_per_conversation: maxPerConversation,
     handoff_agent_id: handoffAgentId || null,
   });
@@ -466,6 +469,22 @@ export function AiConfig() {
               />
             </div>
 
+            <div className="flex items-center justify-between gap-4 rounded-md border border-border p-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {t('limitAutoReplies')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('limitAutoRepliesDesc')}
+                </p>
+              </div>
+              <Switch
+                checked={autoReplyLimitEnabled}
+                onCheckedChange={setAutoReplyLimitEnabled}
+                disabled={disabled || !autoReplyEnabled}
+              />
+            </div>
+
             <div className="flex items-center justify-between gap-4">
               <div>
                 <Label htmlFor="ai-max">{t('maxAutoReplies')}</Label>
@@ -484,7 +503,7 @@ export function AiConfig() {
                     Math.min(20, Math.max(1, Number(e.target.value) || 1)),
                   )
                 }
-                disabled={disabled || !autoReplyEnabled}
+                disabled={disabled || !autoReplyEnabled || !autoReplyLimitEnabled}
                 className="w-20"
               />
             </div>

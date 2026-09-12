@@ -1722,6 +1722,8 @@
       "autoReplyDesc": "O bot responde automaticamente novas mensagens recebidas (somente quando nenhum fluxo trata a mensagem e nenhum agente esta atribuído). Transfere para uma pessoa quando não consegue ajudar.",
       "maxAutoReplies": "Máximo de respostas automaticas por conversa",
       "maxAutoRepliesDesc": "Depois desse número de respostas do bot na mesma conversa, ele para de responder.",
+      "limitAutoReplies": "Limitar respostas automaticas por conversa",
+      "limitAutoRepliesDesc": "Desative para permitir respostas automaticas sem limite em cada conversa.",
       "handoffTo": "Transferir para",
       "handoffToDesc": "Quando o agente não consegue ajudar ou atinge o limite de respostas, ele pausa o atendimento, encaminha a conversa para cá e registra um breve resumo do que aconteceu.",
       "handoffQueue": "Fila sem atribuicao (qualquer agente pode assumir)",
