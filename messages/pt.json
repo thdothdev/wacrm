@@ -1658,7 +1658,7 @@
     },
     "aiConfig": {
       "title": "Configuracao do agente",
-      "description": "Use sua própria chave da OpenAI ou Anthropic. O wacrm chama o provedor diretamente com sua chave, sem taxa de IA por usuário, e seus dados continuam seus. Isso alimenta rascunhos com IA na caixa de entrada, o bot de resposta automatica e a tela de testes.",
+      "description": "Use sua própria chave da OpenAI, Anthropic ou Google Gemini. O wacrm chama o provedor diretamente com sua chave, sem taxa de IA por usuário, e seus dados continuam seus. Isso alimenta rascunhos com IA na caixa de entrada, o bot de resposta automatica e a tela de testes.",
       "adminOnlyConfig": "Somente administradores e proprietários podem alterar a configuração da IA.",
       "loadFailed": "Falha ao carregar configuração de IA",
       "providerAndKey": "Provedor e chave",

@@ -207,3 +207,44 @@ describe('generateReply — Anthropic', () => {
     expect(body.messages).toHaveLength(1)
   })
 })
+
+describe('generateReply Gemini', () => {
+  it('calls generateContent with the API key header and maps the response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okResponse({
+        candidates: [{ content: { parts: [{ text: 'Hello from Gemini!' }] } }],
+        usageMetadata: {
+          promptTokenCount: 12,
+          candidatesTokenCount: 4,
+          totalTokenCount: 16,
+        },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const res = await generateReply({
+      config: config({ provider: 'gemini', apiKey: 'AIza-test', model: 'gemini-3.5-flash-lite' }),
+      systemPrompt: 'sys',
+      messages: [
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hi!' },
+      ],
+    })
+
+    expect(res).toEqual({
+      text: 'Hello from Gemini!',
+      handoff: false,
+      usage: { promptTokens: 12, completionTokens: 4, totalTokens: 16 },
+    })
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toContain('generativelanguage.googleapis.com')
+    expect(url).toContain('gemini-3.5-flash-lite:generateContent')
+    expect(opts.headers['x-goog-api-key']).toBe('AIza-test')
+    const body = JSON.parse(opts.body)
+    expect(body.systemInstruction).toEqual({ parts: [{ text: 'sys' }] })
+    expect(body.contents).toEqual([
+      { role: 'user', parts: [{ text: 'Hello' }] },
+      { role: 'model', parts: [{ text: 'Hi!' }] },
+    ])
+  })
+})
